@@ -1,0 +1,62 @@
+[package]
+name = "second-desk"
+version = "1.0.0"
+description = "基于 Rust + Tauri 的高性能桌面文件管理工具"
+authors = ["Second Desk Team"]
+edition = "2021"
+
+[lib]
+name = "second_desk_lib"
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[[bin]]
+name = "second-desk"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.3", features = ["protocol-asset", "tray-icon"] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-global-shortcut = "2.0"
+tauri-plugin-window-state = "2.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+rayon = "1.10"
+dashmap = "6.0"
+trash = "5.2"  # 跨平台回收站功能
+notify = "7"  # 文件系统监控
+notify-debouncer-mini = "0.5"  # 事件防抖
+auto-launch = "0.5"  # 开机自启动
+
+# Windows API
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Registry",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Controls_Dialogs",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_SystemServices",
+] }
+lnk = "0.5"  # Windows 快捷方式解析
+getfileicon = "0.3"  # Windows 文件图标提取并保存为 PNG
+image = "0.25"  # 图像处理和缩放
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"

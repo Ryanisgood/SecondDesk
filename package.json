@@ -1,0 +1,28 @@
+{
+  "name": "second-desk",
+  "version": "1.0.0",
+  "description": "基于 Rust + Tauri 的高性能桌面文件管理工具",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.3.0",
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.3.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vueuse/core": "^11.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vue-tsc": "^2.2.0"
+  }
+}

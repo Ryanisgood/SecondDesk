@@ -1,0 +1,82 @@
+{
+  "productName": "Second Desk",
+  "version": "1.0.0",
+  "identifier": "com.seconddesk.app",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Second Desk",
+        "width": 1000,
+        "height": 600,
+        "decorations": false,
+        "transparent": true,
+        "dragDropEnabled": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https://asset.localhost data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ws: http://localhost:* https://localhost:*",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**/*",
+          "$APPDATA/**",
+          "$APPLOCALDATA/**",
+          "$APPCONFIG/**",
+          "$RESOURCE/**",
+          "$HOME/AppData/**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "SecondDesk",
+    "shortDescription": "轻量级桌面文件抽屉",
+    "longDescription": "Second Desk 是一款基于 Rust + Tauri 的高性能桌面文件管理工具。\n\n✨ 核心特性：\n• 抽屉式设计 - 优雅隐藏在屏幕边缘，鼠标触发即刻呼出\n• 虚拟文件夹 - 跨目录组织文件，无需移动原始位置\n• 智能搜索 - 毫秒级文件检索，支持拼音和模糊匹配\n• 极致性能 - Rust 核心驱动，低内存占用\n• 现代界面 - 毛玻璃效果，深色主题，流畅动画\n\n🎯 使用场景：\n• 屏幕边缘快速访问常用文件\n• 临时文件的整理与归类\n• 跨项目文件的虚拟组织\n\n让桌面回归简洁，让文件触手可及。",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "nsis": {
+        "headerImage": "icons/installer-header.bmp",
+        "sidebarImage": "icons/installer-sidebar.bmp",
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": ""
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "externalBin": [],
+    "resources": []
+  }
+}

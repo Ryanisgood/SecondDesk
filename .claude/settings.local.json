@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(cargo tree:*)",
+      "Bash(ls:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(cargo check:*)"
+    ]
+  }
+}

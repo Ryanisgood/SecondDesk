@@ -1,0 +1,133 @@
+:root {
+  font-family: 'Inter', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--text-primary);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* ==================== Design Tokens ==================== */
+
+  /* 动效 (Motion) */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 0.2s;
+  --duration-normal: 0.3s;
+  
+  /* 圆角 (Radius) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* 间距 (Spacing) */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* 默认回退值 (会被 JS 覆盖) */
+  --bg-opacity: 0.85;
+  --bg-opacity-secondary: 0.6;
+  --blur-amount: 20px;
+  --saturation-amount: 140%;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 禁用浏览器默认右键菜单 */
+html, body, #app {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+#app {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.4);
+}
+
+/* 文本选择颜色 */
+::selection {
+  background: rgba(var(--primary-color-rgb), 0.3);
+  color: inherit;
+}
+
+/* 通用工具类 */
+.glass-panel {
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--blur-amount)) saturate(var(--saturation-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(var(--saturation-amount));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xl);
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 动画定义 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpFade {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,217 @@
+<script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
+import type { VirtualFolder } from '../stores/files'
+
+interface Props {
+  folder: VirtualFolder | null
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'confirm', newName: string): void
+}>()
+
+const newName = ref('')
+const inputRef = ref<HTMLInputElement | null>(null)
+const errorMessage = ref('')
+
+watch(() => props.folder, (folder) => {
+  if (folder) {
+    newName.value = folder.name
+    errorMessage.value = ''
+    nextTick(() => {
+      if (inputRef.value) {
+        // 全选文本
+        inputRef.value.select()
+        inputRef.value.focus()
+      }
+    })
+  }
+}, { immediate: true })
+
+function handleConfirm() {
+  const trimmedName = newName.value.trim()
+
+  if (!trimmedName) {
+    errorMessage.value = '分组名称不能为空'
+    return
+  }
+
+  if (trimmedName === props.folder?.name) {
+    emit('close')
+    return
+  }
+
+  emit('confirm', trimmedName)
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    handleConfirm()
+  } else if (event.key === 'Escape') {
+    emit('close')
+  }
+}
+</script>
+
+<template>
+  <div v-if="folder" class="modal-overlay" @click.self="emit('close')">
+    <div class="modal">
+      <h3 class="modal-title">重命名虚拟分组</h3>
+
+      <div class="form-row">
+        <label class="label">新名称</label>
+        <input
+          ref="inputRef"
+          v-model="newName"
+          class="input"
+          type="text"
+          placeholder="输入分组名称"
+          @keydown="handleKeydown"
+        />
+      </div>
+
+      <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
+
+      <div class="modal-actions">
+        <button class="btn" @click="emit('close')">取消</button>
+        <button class="btn primary" @click="handleConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay-bg);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+  animation: fadeIn 0.2s var(--ease-out-quad);
+}
+
+.modal {
+  width: 100%;
+  max-width: 400px;
+
+  background: var(--bg-primary);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  animation: slideUpFade 0.3s var(--ease-out-quad);
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(var(--bg-base-rgb), 0.3);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.input:focus {
+  background: var(--bg-primary);
+  border-color: var(--primary-color);
+  box-shadow: var(--focus-glow);
+}
+
+.error {
+  color: var(--danger-color);
+  font-size: 0.813rem;
+  margin: 0.25rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--text-tertiary);
+}
+
+.btn.primary {
+  background: var(--primary-color);
+  border-color: transparent;
+  color: var(--text-on-primary);
+  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.btn.primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.3);
+}
+
+.btn.primary:active {
+  transform: translateY(0);
+}
+</style>

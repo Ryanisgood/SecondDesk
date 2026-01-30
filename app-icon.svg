@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="110" fill="url(#grad)"/>
+  
+  <!-- Desk icon -->
+  <g transform="translate(256, 256)">
+    <!-- Desktop surface -->
+    <rect x="-140" y="-60" width="280" height="20" rx="4" fill="white" opacity="0.95"/>
+    
+    <!-- Folder 1 -->
+    <g transform="translate(-80, -100)">
+      <path d="M -35 0 L -35 -30 L -10 -35 L 10 -35 L 35 -30 L 35 0 Z" fill="white" opacity="0.85"/>
+      <rect x="-35" y="-5" width="70" height="5" fill="white" opacity="0.7"/>
+    </g>
+    
+    <!-- Folder 2 -->
+    <g transform="translate(60, -100)">
+      <path d="M -35 0 L -35 -30 L -10 -35 L 10 -35 L 35 -30 L 35 0 Z" fill="white" opacity="0.75"/>
+      <rect x="-35" y="-5" width="70" height="5" fill="white" opacity="0.6"/>
+    </g>
+    
+    <!-- Desk legs -->
+    <rect x="-130" y="-40" width="12" height="100" rx="6" fill="white" opacity="0.8"/>
+    <rect x="118" y="-40" width="12" height="100" rx="6" fill="white" opacity="0.8"/>
+    
+    <!-- Number "2" accent -->
+    <text x="0" y="120" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="white" opacity="0.25" text-anchor="middle">2</text>
+  </g>
+</svg>

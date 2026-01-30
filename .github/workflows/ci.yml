@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  # 前端检查
+  frontend:
+    name: 前端构建检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 安装前端依赖
+        run: bun install
+
+      - name: 类型检查
+        run: bun run build
+
+  # Rust 后端检查（Windows 专用）
+  backend:
+    name: Rust 后端检查
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 检查 Rust 代码格式
+        working-directory: src-tauri
+        run: cargo fmt -- --check
+
+      - name: Rust Clippy 检查
+        working-directory: src-tauri
+        run: cargo clippy -- -D warnings
+
+      - name: Rust 构建测试
+        working-directory: src-tauri
+        run: cargo build --release

@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 匹配 v1.0.0, v0.1.0 等
+
+env:
+  RUST_BACKTRACE: 1
+
+# 授予 GITHUB_TOKEN 创建 Release 的权限
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 发布 Windows 版本
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装前端依赖
+        run: bun install
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Second Desk ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🎉 Second Desk ${{ github.ref_name }} 发布
+
+            ### 📦 下载安装包（Windows 专用）
+
+            - **`.msi`** - Windows 安装程序（推荐）
+            - **`.exe`** - NSIS 安装程序
+
+            ### 💡 安装说明
+
+            1. 下载 `.msi` 文件（推荐）
+            2. 双击运行安装程序
+            3. 按照向导完成安装
+
+            ### 🔧 系统要求
+
+            - Windows 10/11（64位）
+            - WebView2 运行时（Windows 11 自带）
+
+            ---
+
+            **完整更新日志**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
+          releaseDraft: false
+          prerelease: false
+
+  # 发布完成通知
+  notify:
+    name: 发布完成
+    needs: release
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: 发布成功
+        run: |
+          echo "✅ Second Desk ${{ github.ref_name }} 已成功发布到 GitHub Releases"
+          echo "📦 下载地址: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
