@@ -66,3 +66,42 @@ pub fn desktop_roots() -> Vec<PathBuf> {
 
     roots
 }
+
+/// 获取通用的已知文件夹路径
+/// 支持的文件夹名称：
+/// - Desktop: 桌面
+/// - Downloads: 下载
+/// - Documents: 文档
+/// - Pictures: 图片
+/// - Music: 音乐
+/// - Videos: 视频
+/// - UserProfile: 用户主文件夹
+#[allow(dead_code)]
+pub fn get_known_folder(folder_name: &str) -> Result<PathBuf, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::UI::Shell::{
+            FOLDERID_Desktop, FOLDERID_Downloads, FOLDERID_Documents,
+            FOLDERID_Pictures, FOLDERID_Music, FOLDERID_Videos, FOLDERID_Profile,
+        };
+
+        let folder_id = match folder_name {
+            "Desktop" => &FOLDERID_Desktop,
+            "Downloads" => &FOLDERID_Downloads,
+            "Documents" => &FOLDERID_Documents,
+            "Pictures" => &FOLDERID_Pictures,
+            "Music" => &FOLDERID_Music,
+            "Videos" => &FOLDERID_Videos,
+            "UserProfile" => &FOLDERID_Profile,
+            _ => return Err(format!("不支持的文件夹名称: {}", folder_name)),
+        };
+
+        sh_get_known_folder_path(folder_id)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = folder_name;
+        Err("只支持 Windows 平台".to_string())
+    }
+}

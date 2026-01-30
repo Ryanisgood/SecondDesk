@@ -10,9 +10,9 @@ mod core;
 mod utils;
 
 use commands::file_ops::{
-    copy_files_to_path, extract_file_icons, get_desktop_path, get_file_info, move_file, new_file,
-    open_file, remove_file, rename_file, restore_from_trash, show_file, show_file_properties,
-    FileScannerState,
+    copy_files_to_path, extract_file_icons, get_desktop_path, get_known_folder, get_file_info,
+    move_file, new_file, open_file, open_url, remove_file, rename_file, restore_from_trash,
+    show_file, show_file_properties, FileScannerState,
 };
 use commands::window_control::{
     get_auto_start, load_drawer_config, save_drawer_config, select_background_image, select_folder,
@@ -135,11 +135,13 @@ async fn main() {
             get_file_info,
             extract_file_icons,
             open_file,
+            open_url,
             show_file,
             rename_file,
             remove_file,
             new_file,
             get_desktop_path,
+            get_known_folder,
             restore_from_trash,
             move_file,
             copy_files_to_path,

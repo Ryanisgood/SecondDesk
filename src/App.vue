@@ -14,6 +14,7 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import GlobalDialog from './components/GlobalDialog.vue'
 import BatchActionBar from './components/BatchActionBar.vue'
 import MoveTargetPicker from './components/MoveTargetPicker.vue'
+import SearchBox from './components/SearchBox.vue'
 import appLogoUrl from './assets/app-logo.png'
 import { getIconPath } from './utils/iconHelper'
 
@@ -25,7 +26,7 @@ const fileStore = useFileStore()
 const drawerStore = useDrawerStore()
 const batchStore = useBatchSelectStore()
 const categoryTabsRef = ref<InstanceType<typeof CategoryTabs> | null>(null)
-const searchQuery = ref('')
+const searchBoxRef = ref<InstanceType<typeof SearchBox> | null>(null)
 const viewMode = ref<'grid' | 'list'>('grid')
 const iconSize = ref<'small' | 'medium' | 'large'>('medium')
 const showSettings = ref(false)
@@ -687,17 +688,11 @@ function applyFullTheme(themeMode: string) {
   root.setProperty('--focus-glow', `0 0 0 3px rgba(${colors.primaryRgb}, 0.25)`)
 }
 
-function handleSearch() {
-  bumpTypingSuspend(2500)
-  fileStore.searchFiles(searchQuery.value)
-}
-
 function handleFileOpened() {
   // 检查是否启用了"打开后隐藏"
   if (drawerStore.config.behavior.hideOnOpen) {
     // 清除搜索状态
-    searchQuery.value = ''
-    fileStore.searchFiles('')
+    searchBoxRef.value?.clear()
 
     // 隐藏窗口
     drawerStore.setState(DrawerState.Hidden)
@@ -726,15 +721,6 @@ function handleSearchBlur() {
   ) {
     drawerStore.setState(DrawerState.Hidden)
     hasMouseEntered = false
-  }
-}
-
-function handleSearchKeyDown(e: KeyboardEvent) {
-  bumpTypingSuspend(4000)
-
-  // Some environments deliver composition events late; use keydown to give IME a grace period.
-  if (e.isComposing || e.key === 'Process' || (e as unknown as { keyCode?: number }).keyCode === 229) {
-    bumpTypingSuspend(5000)
   }
 }
 
@@ -922,21 +908,14 @@ async function saveWindowAdjustment() {
       </div>
 
       <div class="header-center" data-tauri-drag-region>
-        <div class="search-box no-drag">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索..."
-            @input="handleSearch"
-            @focus="handleSearchFocus"
-            @blur="handleSearchBlur"
-            @keydown="handleSearchKeyDown"
-          />
-        </div>
+        <SearchBox
+          ref="searchBoxRef"
+          class="no-drag"
+          placeholder="搜索文件、命令、网址..."
+          @focus="handleSearchFocus"
+          @blur="handleSearchBlur"
+          @search="bumpTypingSuspend(2500)"
+        />
       </div>
 
       <div class="header-right" data-tauri-drag-region>
@@ -1122,58 +1101,6 @@ async function saveWindowAdjustment() {
   flex: 1;
   display: flex;
   justify-content: center;
-}
-
-/* 搜索框 - 现代胶囊风格 */
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  background: rgba(var(--bg-base-rgb), 0.3);
-  border: 1px solid var(--border-color);
-  border-radius: 99px; /* 胶囊圆角 */
-  min-width: 320px;
-  transition: all 0.2s var(--ease-out-quad);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
-}
-
-.search-box:hover {
-  background: rgba(var(--bg-base-rgb), 0.5);
-  border-color: var(--text-tertiary);
-}
-
-.search-box:focus-within {
-  background: var(--bg-primary);
-  border-color: var(--primary-color);
-  box-shadow: 
-    var(--focus-glow),
-    var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.search-icon {
-  color: var(--text-tertiary);
-  transition: color 0.2s;
-}
-
-.search-box:focus-within .search-icon {
-  color: var(--primary-color);
-}
-
-.search-box input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  outline: none;
-  width: 100%;
-}
-
-.search-box input::placeholder {
-  color: var(--text-tertiary);
 }
 
 /* 图标按钮 - 纯净风格 */

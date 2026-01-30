@@ -1,6 +1,12 @@
 # SecondDesk 本地 CI 检查脚本
 # 使用方法：.\check.ps1
 
+# 设置 UTF-8 编码 (chcp 65001 强制控制台使用 UTF-8)
+chcp 65001 | Out-Null
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+
 Write-Host "🔍 开始本地 CI 检查..." -ForegroundColor Cyan
 Write-Host ""
 

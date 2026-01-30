@@ -130,6 +130,38 @@ pub async fn open_file(file_path: String) -> Result<(), String> {
     }
 }
 
+/// 打开 URL（使用默认浏览器）
+#[tauri::command]
+pub async fn open_url(url: String) -> Result<(), String> {
+    // 验证 URL 格式（基本检查）
+    if !url.starts_with("http://") && !url.starts_with("https://") && !url.starts_with("ftp://") {
+        return Err("无效的 URL 格式".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("cmd")
+            .creation_flags(CREATE_NO_WINDOW)
+            .arg("/C")
+            .arg("start")
+            .arg("")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("打开 URL 失败: {}", e))?;
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("只支持 Windows 平台".to_string())
+    }
+}
+
 /// 解析快捷方式目标路径
 #[cfg(target_os = "windows")]
 fn resolve_shortcut_target(lnk_path: &Path) -> Option<PathBuf> {
@@ -269,6 +301,22 @@ pub async fn get_desktop_path() -> Result<String, String> {
 
     #[cfg(not(target_os = "windows"))]
     {
+        Err("只支持 Windows 平台".to_string())
+    }
+}
+
+/// 获取已知文件夹路径（如下载、文档等）
+#[tauri::command]
+pub async fn get_known_folder(folder: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let path = known_folders::get_known_folder(&folder)?;
+        Ok(path.to_string_lossy().to_string())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = folder;
         Err("只支持 Windows 平台".to_string())
     }
 }
