@@ -1,6 +1,6 @@
 [package]
 name = "second-desk"
-version = "1.0.0"
+version = "1.1.0"
 description = "基于 Rust + Tauri 的高性能桌面文件管理工具"
 authors = ["Second Desk Team"]
 edition = "2021"
