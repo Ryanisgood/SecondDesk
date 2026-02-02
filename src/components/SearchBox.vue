@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, useAttrs } from 'vue'
 import { useSearchStore } from '../stores/search'
 import { useFileStore } from '../stores/files'
 import SearchSuggestions from './SearchSuggestions.vue'
@@ -13,6 +13,9 @@ const _props = withDefaults(defineProps<Props>(), {
   placeholder: '搜索文件、命令、网址...',
 })
 void _props // Keep props reactive for template usage
+
+// 获取传递的属性（如 class）
+const attrs = useAttrs()
 
 // Emits
 const emit = defineEmits<{
@@ -32,6 +35,8 @@ const containerRef = ref<HTMLElement | null>(null)
 // State
 const localQuery = ref('')
 const isComposing = ref(false)
+const errorMessage = ref('')
+let errorTimer: number | null = null
 
 // Computed
 const currentMode = computed(() => searchStore.mode)
@@ -118,11 +123,26 @@ function handleKeyDown(e: KeyboardEvent): void {
 async function handleEnter(): Promise<void> {
   try {
     await searchStore.execute()
-    localQuery.value = ''
-    blur()
+    // 注意：不在这里清空 localQuery
+    // 如果是 command/navigate 模式，searchStore.execute() 会调用 clear()
+    // 然后 watch 会自动同步 localQuery = ''
+    // 如果是 search 模式，保持 localQuery 不变，方便用户继续操作
   } catch (error) {
     console.error('执行操作失败:', error)
+    // 显示错误提示
+    const errorMsg = error instanceof Error ? error.message : '执行操作失败'
+    showError(errorMsg)
   }
+}
+
+function showError(message: string): void {
+  errorMessage.value = message
+
+  // 3秒后自动消失
+  if (errorTimer) clearTimeout(errorTimer)
+  errorTimer = window.setTimeout(() => {
+    errorMessage.value = ''
+  }, 3000)
 }
 
 function handleEscape(): void {
@@ -204,7 +224,7 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="containerRef" class="smart-search-box-container">
+  <div ref="containerRef" class="smart-search-box-container" :class="attrs.class">
     <div class="smart-search-box" :class="{ focused: searchStore.showSuggestions }">
       <!-- 模式图标 -->
       <div class="search-icon" :style="{ color: modeColor }">
@@ -247,6 +267,17 @@ defineExpose({
         @select="handleEnter"
       />
     </Transition>
+
+    <!-- 错误提示 - 使用 Teleport 传送到 body -->
+    <Teleport to="body">
+      <Transition name="error-fade">
+        <div v-if="errorMessage" class="error-toast-searchbox" @click="errorMessage = ''">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{{ errorMessage }}</span>
+          <span class="error-close">✕</span>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -342,5 +373,76 @@ defineExpose({
 .suggestions-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* 错误提示样式 */
+.error-toast-searchbox {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  background: #f56c6c;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  z-index: 10000;
+  max-width: 400px;
+}
+
+.error-toast-searchbox .error-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.error-toast-searchbox .error-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.error-toast-searchbox .error-close {
+  font-size: 16px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.error-toast-searchbox .error-close:hover {
+  opacity: 1;
+}
+
+/* 错误提示过渡动画 */
+.error-fade-enter-active {
+  animation: errorSlideIn 0.3s ease;
+}
+
+.error-fade-leave-active {
+  animation: errorSlideOut 0.3s ease;
+}
+
+@keyframes errorSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes errorSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 </style>

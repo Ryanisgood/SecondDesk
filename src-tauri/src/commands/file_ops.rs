@@ -604,3 +604,76 @@ pub async fn show_file_properties(file_path: String) -> Result<(), String> {
         Err("只支持 Windows 平台".to_string())
     }
 }
+
+/// 启动应用程序（支持 PATH 环境变量中的可执行文件）
+#[tauri::command]
+pub async fn launch_application(app_name: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+
+        // 获取用户主目录作为默认工作目录
+        let user_profile = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\".to_string());
+
+        Command::new(&app_name)
+            .creation_flags(CREATE_NEW_CONSOLE)
+            .current_dir(&user_profile) // 设置工作目录为用户主目录
+            .spawn()
+            .map_err(|e| format!("启动应用程序失败: {}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app_name;
+        Err("只支持 Windows 平台".to_string())
+    }
+}
+
+/// 执行 Shell 命令（PowerShell 或 CMD）
+#[tauri::command]
+pub async fn execute_shell_command(shell: String, command: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+
+        // 获取用户主目录作为默认工作目录
+        let user_profile = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\".to_string());
+
+        let (program, args) = match shell.as_str() {
+            "powershell" | "ps" => {
+                // PowerShell: 使用 -NoExit 保持窗口打开，执行命令后不关闭
+                ("powershell.exe", vec!["-NoExit", "-Command", &command])
+            }
+            "cmd" => {
+                // CMD: 使用 /K 保持窗口打开，执行命令后不关闭
+                ("cmd.exe", vec!["/K", &command])
+            }
+            _ => {
+                return Err(format!("不支持的 Shell 类型: {}", shell));
+            }
+        };
+
+        Command::new(program)
+            .creation_flags(CREATE_NEW_CONSOLE)
+            .current_dir(&user_profile) // 设置工作目录为用户主目录
+            .args(&args)
+            .spawn()
+            .map_err(|e| format!("执行 Shell 命令失败: {}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (shell, command);
+        Err("只支持 Windows 平台".to_string())
+    }
+}

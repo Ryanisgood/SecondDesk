@@ -14,31 +14,51 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['数学', 'math', '计算'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'calc.exe' })
+      await invoke('launch_application', { appName: 'calc.exe' })
     },
   },
   {
     id: 'cmd',
     name: '命令提示符',
-    description: '打开命令提示符 (CMD)',
+    description: '打开命令提示符或执行命令',
     aliases: ['command', '命令行'],
-    icon: '💻',
+    icon: '/src/assets/search/cmd.png',
     category: 'system',
-    keywords: ['终端', 'terminal', 'console'],
-    execute: async () => {
-      await invoke('open_file', { filePath: 'cmd.exe' })
+    keywords: ['终端', 'terminal', 'console', '命令'],
+    execute: async (args?: string[]) => {
+      if (args && args.length > 0) {
+        // 执行 CMD 命令
+        const command = args.join(' ')
+        await invoke('execute_shell_command', {
+          shell: 'cmd',
+          command,
+        })
+      } else {
+        // 打开空的 CMD 窗口
+        await invoke('launch_application', { appName: 'cmd.exe' })
+      }
     },
   },
   {
     id: 'powershell',
     name: 'PowerShell',
-    description: '打开 PowerShell',
+    description: '打开 PowerShell 或执行命令',
     aliases: ['ps', 'pwsh', 'posh'],
-    icon: '⚡',
+    icon: '/src/assets/search/powershell.png',
     category: 'system',
-    keywords: ['终端', 'terminal', 'shell'],
-    execute: async () => {
-      await invoke('open_file', { filePath: 'powershell.exe' })
+    keywords: ['终端', 'terminal', 'shell', '命令'],
+    execute: async (args?: string[]) => {
+      if (args && args.length > 0) {
+        // 执行 PowerShell 命令
+        const command = args.join(' ')
+        await invoke('execute_shell_command', {
+          shell: 'powershell',
+          command,
+        })
+      } else {
+        // 打开空的 PowerShell 窗口
+        await invoke('launch_application', { appName: 'powershell.exe' })
+      }
     },
   },
   {
@@ -50,7 +70,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['文本', 'text', 'editor'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'notepad.exe' })
+      await invoke('launch_application', { appName: 'notepad.exe' })
     },
   },
   {
@@ -62,7 +82,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['文件', 'folder', '目录'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'explorer.exe' })
+      await invoke('launch_application', { appName: 'explorer.exe' })
     },
   },
   {
@@ -74,7 +94,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['进程', 'process', '性能'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'taskmgr.exe' })
+      await invoke('launch_application', { appName: 'taskmgr.exe' })
     },
   },
   {
@@ -86,7 +106,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['图片', 'image', '编辑'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'mspaint.exe' })
+      await invoke('launch_application', { appName: 'mspaint.exe' })
     },
   },
   {
@@ -98,7 +118,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['设置', '系统'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'control.exe' })
+      await invoke('launch_application', { appName: 'control.exe' })
     },
   },
   {
@@ -110,7 +130,7 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['系统', 'system'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'regedit.exe' })
+      await invoke('launch_application', { appName: 'regedit.exe' })
     },
   },
   {
@@ -122,7 +142,63 @@ const BUILTIN_COMMANDS: Command[] = [
     category: 'system',
     keywords: ['启动', 'startup'],
     execute: async () => {
-      await invoke('open_file', { filePath: 'msconfig.exe' })
+      await invoke('launch_application', { appName: 'msconfig.exe' })
+    },
+  },
+
+  // ==================== 搜索引擎 ====================
+  {
+    id: 'baidu',
+    name: '百度搜索',
+    description: '使用百度搜索内容',
+    aliases: ['bd', '百度'],
+    icon: '/src/assets/search/baidu.png',
+    category: 'search',
+    keywords: ['搜索', 'search', 'baidu'],
+    execute: async (args?: string[]) => {
+      if (args && args.length > 0) {
+        const query = args.join(' ')
+        const url = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`
+        await invoke('open_url', { url })
+      } else {
+        await invoke('open_url', { url: 'https://www.baidu.com' })
+      }
+    },
+  },
+  {
+    id: 'google',
+    name: 'Google 搜索',
+    description: '使用 Google 搜索内容',
+    aliases: ['gg', 'google', '谷歌'],
+    icon: '/src/assets/search/google.png',
+    category: 'search',
+    keywords: ['搜索', 'search', 'google'],
+    execute: async (args?: string[]) => {
+      if (args && args.length > 0) {
+        const query = args.join(' ')
+        const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+        await invoke('open_url', { url })
+      } else {
+        await invoke('open_url', { url: 'https://www.google.com' })
+      }
+    },
+  },
+  {
+    id: 'bing',
+    name: 'Bing 搜索',
+    description: '使用 Bing 搜索内容',
+    aliases: ['必应'],
+    icon: '/src/assets/search/bing.png',
+    category: 'search',
+    keywords: ['搜索', 'search', 'bing'],
+    execute: async (args?: string[]) => {
+      if (args && args.length > 0) {
+        const query = args.join(' ')
+        const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}`
+        await invoke('open_url', { url })
+      } else {
+        await invoke('open_url', { url: 'https://www.bing.com' })
+      }
     },
   },
 ]

@@ -5,6 +5,7 @@ import type { Suggestion, SearchHistoryItem, InputType } from '../types/search'
 import { detectInputType, parseInput } from '../utils/searchParser'
 import { findCommands } from '../utils/commandRegistry'
 import { useFileStore } from './files'
+import { useDrawerStore, DrawerState } from './drawer'
 
 // 搜索历史存储 Key
 const SEARCH_HISTORY_KEY = 'seconddesk_search_history'
@@ -99,16 +100,30 @@ export const useSearchStore = defineStore('search', () => {
     if (parseResult.type === 'command') {
       // 命令模式：显示匹配的命令
       const matchedCommands = findCommands(parseResult.data.command)
-      newSuggestions.push(...matchedCommands.slice(0, 8).map(cmd => ({
-        id: `cmd-${cmd.id}`,
-        type: 'command' as const,
-        title: cmd.name,
-        description: cmd.description,
-        icon: cmd.icon,
-        action: async () => {
-          await cmd.execute(parseResult.data.args)
-        },
-      })))
+      newSuggestions.push(...matchedCommands.slice(0, 8).map(cmd => {
+        let description = cmd.description
+
+        // 为搜索引擎命令添加动态描述
+        if (['baidu', 'google', 'bing'].includes(cmd.id)) {
+          if (parseResult.data.args && parseResult.data.args.length > 0) {
+            const query = parseResult.data.args.join(' ')
+            description = `搜索：${query}`
+          } else {
+            description = `打开首页`
+          }
+        }
+
+        return {
+          id: `cmd-${cmd.id}`,
+          type: 'command' as const,
+          title: cmd.name,
+          description,
+          icon: cmd.icon,
+          action: async () => {
+            await cmd.execute(parseResult.data.args)
+          },
+        }
+      }))
     } else if (parseResult.type === 'navigate') {
       // 导航模式：显示导航目标
       const navData = parseResult.data
@@ -224,6 +239,10 @@ export const useSearchStore = defineStore('search', () => {
     selectedIndex.value = -1
     showSuggestions.value = false
     mode.value = 'auto'
+
+    // 同步清空 fileStore 的搜索过滤,恢复显示全部文件
+    const fileStore = useFileStore()
+    fileStore.searchFiles('')
   }
 
   /**
@@ -234,39 +253,75 @@ export const useSearchStore = defineStore('search', () => {
 
     if (!trimmedQuery) return
 
-    // 如果有选中的建议，执行建议的操作
-    if (selectedSuggestion.value) {
-      await selectedSuggestion.value.action()
-      addToHistory(trimmedQuery, mode.value)
-      clear()
-      return
-    }
+    // 记录当前操作类型，用于判断是否需要隐藏窗口
+    let shouldHide = false
+    let shouldClear = false  // 默认不清空，只在 command/navigate 成功时才清空
 
-    // 否则执行默认操作
-    const parseResult = parseInput(trimmedQuery)
+    try {
+      // 如果有选中的建议，执行建议的操作
+      if (selectedSuggestion.value) {
+        const suggestionType = selectedSuggestion.value.type as InputType
 
-    if (parseResult.type === 'command') {
-      // 命令模式：执行第一个匹配的命令
-      const commands = findCommands(parseResult.data.command)
-      if (commands.length > 0) {
-        await commands[0].execute(parseResult.data.args)
-        addToHistory(trimmedQuery, 'command')
+        // command 和 navigate 类型需要隐藏窗口和清空状态
+        // file 类型由 App.vue 的 handleFileOpened() 处理
+        if (suggestionType === 'command' || suggestionType === 'navigate') {
+          shouldHide = true
+          shouldClear = true
+        }
+
+        await selectedSuggestion.value.action()
+        addToHistory(trimmedQuery, mode.value)
+      } else {
+        // 否则执行默认操作
+        const parseResult = parseInput(trimmedQuery)
+
+        if (parseResult.type === 'command') {
+          // 命令模式：执行第一个匹配的命令
+          const commands = findCommands(parseResult.data.command)
+          if (commands.length > 0) {
+            await commands[0].execute(parseResult.data.args)
+            addToHistory(trimmedQuery, 'command')
+            shouldHide = true
+            shouldClear = true
+          }
+        } else if (parseResult.type === 'navigate') {
+          // 导航模式：执行导航（在资源管理器或浏览器中打开）
+          const { handleNavigation } = await import('../utils/navigationHandler')
+          await handleNavigation(parseResult.data.value)
+          addToHistory(trimmedQuery, 'navigate')
+
+          // 导航后隐藏窗口和清空状态
+          shouldHide = true
+          shouldClear = true
+        } else {
+          // 搜索模式：打开第一个匹配的文件
+          // 注意：不在这里清空和隐藏，由 App.vue 的 handleFileOpened() 处理
+          const fileStore = useFileStore()
+          if (fileStore.filteredFiles.length > 0) {
+            await fileStore.openFile(fileStore.filteredFiles[0].filePath)
+            addToHistory(trimmedQuery, 'search')
+          }
+          // search 模式不设置 shouldHide 和 shouldClear
+        }
+      }
+
+      // 如果是命令或导航操作，且配置了打开后隐藏，则先隐藏窗口
+      if (shouldHide) {
+        const drawerStore = useDrawerStore()
+        if (drawerStore.config.behavior.hideOnOpen) {
+          drawerStore.setState(DrawerState.Hidden)
+        }
+      }
+
+      // 最后清空状态（在隐藏窗口之后）
+      if (shouldClear) {
         clear()
       }
-    } else if (parseResult.type === 'navigate') {
-      // 导航模式：执行导航
-      const { handleNavigation } = await import('../utils/navigationHandler')
-      await handleNavigation(parseResult.data.value)
-      addToHistory(trimmedQuery, 'navigate')
-      clear()
-    } else {
-      // 搜索模式：打开第一个匹配的文件
-      const fileStore = useFileStore()
-      if (fileStore.filteredFiles.length > 0) {
-        await fileStore.openFile(fileStore.filteredFiles[0].filePath)
-        addToHistory(trimmedQuery, 'search')
-        clear()
-      }
+    } catch (error) {
+      // 执行失败，不清空也不隐藏，让用户可以看到错误
+      console.error('执行操作失败:', error)
+      // 重新抛出错误，让调用者处理
+      throw error
     }
   }
 

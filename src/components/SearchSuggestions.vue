@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSearchStore } from '../stores/search'
 import type { Suggestion, SuggestionGroup } from '../types/search'
 
@@ -10,6 +10,10 @@ const emit = defineEmits<{
 
 // Store
 const searchStore = useSearchStore()
+
+// 错误提示状态
+const errorMessage = ref('')
+let errorTimer: number | null = null
 
 // Computed
 const groupedSuggestions = computed<SuggestionGroup[]>(() => {
@@ -54,14 +58,23 @@ const groupedSuggestions = computed<SuggestionGroup[]>(() => {
 })
 
 // Methods
-async function handleSelectSuggestion(suggestion: Suggestion, index: number): Promise<void> {
+function handleSelectSuggestion(suggestion: Suggestion, index: number): void {
+  // 设置选中的建议索引
   searchStore.selectSuggestion(index)
+
+  // 触发 select 事件，让 SearchBox 通过 execute() 来执行
+  // 注意：不在这里直接调用 action()，避免重复执行
   emit('select', suggestion)
-  try {
-    await suggestion.action()
-  } catch (error) {
-    console.error('执行建议操作失败:', error)
-  }
+}
+
+function showError(message: string): void {
+  errorMessage.value = message
+
+  // 3秒后自动消失
+  if (errorTimer) clearTimeout(errorTimer)
+  errorTimer = window.setTimeout(() => {
+    errorMessage.value = ''
+  }, 3000)
 }
 
 function isSelected(index: number): boolean {
@@ -79,6 +92,7 @@ function getGlobalIndex(groupIndex: number, itemIndex: number): number {
 </script>
 
 <template>
+  <!-- 主内容：建议下拉菜单 -->
   <div class="suggestions-dropdown">
     <div
       v-for="(group, groupIndex) in groupedSuggestions"
@@ -99,7 +113,13 @@ function getGlobalIndex(groupIndex: number, itemIndex: number): number {
       >
         <!-- 图标 -->
         <div class="suggestion-icon">
-          {{ item.icon }}
+          <img
+            v-if="item.icon.startsWith('/')"
+            :src="item.icon"
+            :alt="item.title"
+            class="icon-image"
+          />
+          <span v-else>{{ item.icon }}</span>
         </div>
 
         <!-- 内容 -->
@@ -116,6 +136,17 @@ function getGlobalIndex(groupIndex: number, itemIndex: number): number {
         </div>
       </div>
     </div>
+
+    <!-- 错误提示 - 使用 Teleport 传送到 body -->
+    <Teleport to="body">
+      <Transition name="error-fade">
+        <div v-if="errorMessage" class="error-toast" @click="errorMessage = ''">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{{ errorMessage }}</span>
+          <span class="error-close">✕</span>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -185,6 +216,12 @@ function getGlobalIndex(groupIndex: number, itemIndex: number): number {
   justify-content: center;
 }
 
+.icon-image {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .suggestion-content {
   flex: 1;
   min-width: 0;
@@ -236,5 +273,77 @@ function getGlobalIndex(groupIndex: number, itemIndex: number): number {
 
 .suggestions-dropdown::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* 错误提示样式 */
+.error-toast {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  background: #f56c6c;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  animation: slideIn 0.3s ease;
+  z-index: 10000;
+  max-width: 400px;
+}
+
+.error-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.error-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.error-close {
+  font-size: 16px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.error-close:hover {
+  opacity: 1;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 错误提示过渡动画 */
+.error-fade-enter-active {
+  animation: slideIn 0.3s ease;
+}
+
+.error-fade-leave-active {
+  animation: slideOut 0.3s ease;
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 </style>

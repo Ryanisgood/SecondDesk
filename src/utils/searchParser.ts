@@ -36,10 +36,22 @@ const SYSTEM_FOLDERS: Record<string, string> = {
 }
 
 /**
+ * 移除字符串首尾的引号（单引号或双引号）
+ */
+function removeQuotes(str: string): string {
+  const trimmed = str.trim()
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
+}
+
+/**
  * 检测输入是否为文件路径
  */
 export function isPath(input: string): boolean {
-  const trimmed = input.trim()
+  const trimmed = removeQuotes(input.trim())
 
   // 检查是否匹配路径模式
   return Object.values(PATH_PATTERNS).some(pattern => pattern.test(trimmed))
@@ -92,8 +104,9 @@ function parseCommand(input: string): ParseResult {
  */
 function parseNavigate(input: string): ParseResult {
   const trimmed = input.trim()
+  const unquoted = removeQuotes(trimmed)
 
-  // 1. 检测 URL
+  // 1. 检测 URL（URL 不需要移除引号）
   const urlResult = detectURL(trimmed)
   if (urlResult.isURL && urlResult.normalized) {
     return {
@@ -107,13 +120,13 @@ function parseNavigate(input: string): ParseResult {
   }
 
   // 2. 检测系统文件夹快捷词
-  if (isSystemFolderShortcut(trimmed)) {
+  if (isSystemFolderShortcut(unquoted)) {
     return {
       type: 'navigate',
       data: {
         type: 'system_folder',
-        value: trimmed,
-        normalized: getSystemFolderName(trimmed) || trimmed,
+        value: unquoted,
+        normalized: getSystemFolderName(unquoted) || unquoted,
       },
     }
   }
@@ -124,8 +137,8 @@ function parseNavigate(input: string): ParseResult {
       type: 'navigate',
       data: {
         type: 'path',
-        value: trimmed,
-        normalized: trimmed,
+        value: unquoted,  // 使用移除引号后的路径
+        normalized: unquoted,
       },
     }
   }
@@ -147,7 +160,12 @@ export function detectInputType(query: string): InputType {
 
   if (!trimmed) return 'auto'
 
-  // 1. 检测命令模式（以 > 或 cmd: 开头）
+  // 1. 特殊处理：ps/cmd/搜索引擎 开头自动识别为命令
+  if (trimmed.match(/^(ps|cmd|bd|gg|bing)(\s+|$)/i)) {
+    return 'command'
+  }
+
+  // 2. 检测命令模式（以 > 或 cmd: 开头）
   if (trimmed.startsWith('>') || trimmed.toLowerCase().startsWith('cmd:')) {
     return 'command'
   }
@@ -185,7 +203,12 @@ export function parseInput(query: string): ParseResult {
     }
   }
 
-  // 1. 命令模式
+  // 1. 特殊处理：ps/cmd/搜索引擎 开头直接识别为命令
+  if (trimmed.match(/^(ps|cmd|bd|gg|bing)(\s+|$)/i)) {
+    return parseCommand(trimmed)
+  }
+
+  // 2. 命令模式（以 > 或 cmd: 开头）
   if (trimmed.startsWith('>') || trimmed.toLowerCase().startsWith('cmd:')) {
     return parseCommand(trimmed)
   }

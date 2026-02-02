@@ -5,6 +5,18 @@ import { isPath, isSystemFolderShortcut, getSystemFolderName } from './searchPar
 import { useFileStore } from '../stores/files'
 
 /**
+ * 移除字符串首尾的引号（单引号或双引号）
+ */
+function removeQuotes(str: string): string {
+  const trimmed = str.trim()
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
+}
+
+/**
  * 处理导航操作
  * @param input 用户输入（URL、路径或系统文件夹快捷词）
  */
@@ -15,7 +27,10 @@ export async function handleNavigation(input: string): Promise<void> {
     throw new Error('导航输入不能为空')
   }
 
-  // 1. 检测 URL
+  // 移除引号（如果有）
+  const unquoted = removeQuotes(trimmed)
+
+  // 1. 检测 URL（URL不需要移除引号）
   const urlResult = detectURL(trimmed)
   if (urlResult.isURL && urlResult.normalized) {
     await openURL(urlResult.normalized)
@@ -23,8 +38,8 @@ export async function handleNavigation(input: string): Promise<void> {
   }
 
   // 2. 检测系统文件夹快捷词
-  if (isSystemFolderShortcut(trimmed)) {
-    const folderName = getSystemFolderName(trimmed)
+  if (isSystemFolderShortcut(unquoted)) {
+    const folderName = getSystemFolderName(unquoted)
     if (folderName) {
       await navigateToSystemFolder(folderName)
       return
@@ -33,7 +48,7 @@ export async function handleNavigation(input: string): Promise<void> {
 
   // 3. 检测文件路径
   if (isPath(trimmed)) {
-    await navigateToPath(trimmed)
+    await navigateToPath(unquoted)  // 使用移除引号后的路径
     return
   }
 
@@ -54,6 +69,22 @@ async function openURL(url: string): Promise<void> {
 }
 
 /**
+ * 获取文件夹的显示名称
+ */
+function getFolderDisplayName(folderName: string): string {
+  const nameMap: Record<string, string> = {
+    'Desktop': '桌面',
+    'Downloads': '下载',
+    'Documents': '文档',
+    'Pictures': '图片',
+    'Music': '音乐',
+    'Videos': '视频',
+    'UserProfile': '用户',
+  }
+  return nameMap[folderName] || folderName
+}
+
+/**
  * 导航到系统文件夹
  */
 async function navigateToSystemFolder(folderName: string): Promise<void> {
@@ -62,15 +93,21 @@ async function navigateToSystemFolder(folderName: string): Promise<void> {
     const path = await invoke<string>('get_known_folder', { folder: folderName })
 
     if (!path) {
-      throw new Error(`无法获取系统文件夹: ${folderName}`)
+      throw new Error(`无法获取${getFolderDisplayName(folderName)}路径`)
     }
 
-    // 加载文件列表
-    const fileStore = useFileStore()
-    await fileStore.loadFiles(path)
+    // 在 Windows 资源管理器中打开文件夹
+    await invoke('open_file', { filePath: path })
   } catch (error) {
     console.error('导航到系统文件夹失败:', error)
-    throw new Error(`无法访问系统文件夹: ${folderName}`)
+
+    // 提供更友好的错误消息
+    const displayName = getFolderDisplayName(folderName)
+    const originalError = error instanceof Error ? error.message : String(error)
+
+    throw new Error(
+      `无法打开${displayName}文件夹。请检查系统权限设置。\n详细错误: ${originalError}`
+    )
   }
 }
 
@@ -79,12 +116,11 @@ async function navigateToSystemFolder(folderName: string): Promise<void> {
  */
 async function navigateToPath(path: string): Promise<void> {
   try {
-    // 加载文件列表
-    const fileStore = useFileStore()
-    await fileStore.loadFiles(path)
+    // 在 Windows 资源管理器中打开路径
+    await invoke('open_file', { filePath: path })
   } catch (error) {
     console.error('导航到路径失败:', error)
-    throw new Error(`无法访问路径: ${path}`)
+    throw new Error(`无法打开路径: ${path}`)
   }
 }
 
