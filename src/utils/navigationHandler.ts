@@ -2,7 +2,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { detectURL } from './urlDetector'
 import { isPath, isSystemFolderShortcut, getSystemFolderName } from './searchParser'
-import { useFileStore } from '../stores/files'
 
 /**
  * 移除字符串首尾的引号（单引号或双引号）

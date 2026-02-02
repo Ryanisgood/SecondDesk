@@ -28,7 +28,7 @@ export type ParseResult =
   | { type: 'search'; data: SearchInput }
 
 // 命令定义
-export type CommandCategory = 'system' | 'file' | 'app' | 'custom'
+export type CommandCategory = 'system' | 'file' | 'app' | 'search' | 'custom'
 
 export interface Command {
   id: string
