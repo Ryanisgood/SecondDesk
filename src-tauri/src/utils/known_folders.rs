@@ -81,8 +81,8 @@ pub fn get_known_folder(folder_name: &str) -> Result<PathBuf, String> {
     #[cfg(target_os = "windows")]
     {
         use windows::Win32::UI::Shell::{
-            FOLDERID_Desktop, FOLDERID_Downloads, FOLDERID_Documents,
-            FOLDERID_Pictures, FOLDERID_Music, FOLDERID_Videos, FOLDERID_Profile,
+            FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music,
+            FOLDERID_Pictures, FOLDERID_Profile, FOLDERID_Videos,
         };
 
         let folder_id = match folder_name {

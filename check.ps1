@@ -1,59 +1,63 @@
-# SecondDesk 本地 CI 检查脚本
+﻿# SecondDesk 本地 CI 检查脚本
 # 使用方法：.\check.ps1
 
-# 设置 UTF-8 编码 (chcp 65001 强制控制台使用 UTF-8)
+# 设置 UTF-8 编码
 chcp 65001 | Out-Null
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
-Write-Host "🔍 开始本地 CI 检查..." -ForegroundColor Cyan
+Write-Host "Starting local CI check..." -ForegroundColor Cyan
 Write-Host ""
 
-# 1. 前端类型检查
-Write-Host "📦 [1/4] 前端构建检查..." -ForegroundColor Yellow
+# 1. Frontend build check
+Write-Host "[1/4] Frontend build check..." -ForegroundColor Yellow
 bun run build
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ 前端构建失败！" -ForegroundColor Red
+$bunExitCode = $LASTEXITCODE
+if ($bunExitCode -ne 0) {
+    Write-Host "Frontend build failed!" -ForegroundColor Red
     exit 1
 }
-Write-Host "✅ 前端构建通过" -ForegroundColor Green
+Write-Host "Frontend build passed" -ForegroundColor Green
 Write-Host ""
 
-# 2. Rust 代码格式检查
-Write-Host "🎨 [2/4] Rust 代码格式检查..." -ForegroundColor Yellow
-Set-Location src-tauri
+# 2. Rust format check
+Write-Host "[2/4] Rust format check..." -ForegroundColor Yellow
+Push-Location src-tauri
 cargo fmt -- --check
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Rust 格式检查失败！运行 'cargo fmt' 修复" -ForegroundColor Red
-    Set-Location ..
+$fmtExitCode = $LASTEXITCODE
+if ($fmtExitCode -ne 0) {
+    Write-Host "Rust format check failed! Run 'cargo fmt' to fix" -ForegroundColor Red
+    Pop-Location
     exit 1
 }
-Write-Host "✅ Rust 格式检查通过" -ForegroundColor Green
+Write-Host "Rust format check passed" -ForegroundColor Green
 Write-Host ""
 
-# 3. Rust Clippy 检查
-Write-Host "🔧 [3/4] Rust Clippy 检查..." -ForegroundColor Yellow
+# 3. Rust Clippy check
+Write-Host "[3/4] Rust Clippy check..." -ForegroundColor Yellow
 cargo clippy -- -D warnings
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Clippy 检查失败！" -ForegroundColor Red
-    Set-Location ..
+$clippyExitCode = $LASTEXITCODE
+if ($clippyExitCode -ne 0) {
+    Write-Host "Clippy check failed!" -ForegroundColor Red
+    Pop-Location
     exit 1
 }
-Write-Host "✅ Clippy 检查通过" -ForegroundColor Green
+Write-Host "Clippy check passed" -ForegroundColor Green
 Write-Host ""
 
-# 4. Rust 构建测试
-Write-Host "🏗️  [4/4] Rust 构建测试..." -ForegroundColor Yellow
+# 4. Rust build test
+Write-Host "[4/4] Rust build test..." -ForegroundColor Yellow
 cargo build --release
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Rust 构建失败！" -ForegroundColor Red
-    Set-Location ..
+$buildExitCode = $LASTEXITCODE
+if ($buildExitCode -ne 0) {
+    Write-Host "Rust build failed!" -ForegroundColor Red
+    Pop-Location
     exit 1
 }
-Write-Host "✅ Rust 构建通过" -ForegroundColor Green
+Write-Host "Rust build passed" -ForegroundColor Green
 Write-Host ""
 
-Set-Location ..
+Pop-Location
 
-Write-Host "🎉 所有检查通过！可以安全提交了" -ForegroundColor Green
+Write-Host "All checks passed! Safe to commit" -ForegroundColor Green
