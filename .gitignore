@@ -37,3 +37,10 @@ out/
 
 # Tauri
 src-tauri/Cargo.lock
+
+# Tauri signing keys (私钥，绝对不能提交)
+~/.tauri/
+*.key
+
+# Notes (包含敏感信息)
+notes/

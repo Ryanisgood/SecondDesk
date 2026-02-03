@@ -38,6 +38,8 @@ async fn main() {
         .manage(scanner_state)
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // 设置应用数据目录（供 icon_extractor 等模块使用）
             let app_data_dir = app

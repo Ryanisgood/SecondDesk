@@ -39,6 +39,7 @@ jobs:
 
       - name: 构建 Tauri 应用
         uses: tauri-apps/tauri-action@v0
+        id: tauri-build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -70,6 +71,54 @@ jobs:
             **完整更新日志**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
           releaseDraft: false
           prerelease: false
+
+      - name: 生成 latest.json
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $date = Get-Date -Format "yyyy-MM-dd"
+
+          # 读取发布说明（如果存在）
+          $body = "Release ${{ github.ref_name }}"
+          if (Test-Path "RELEASE_NOTES.md") {
+            $body = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            Write-Host "Loaded release notes from RELEASE_NOTES.md"
+          } else {
+            Write-Host "No RELEASE_NOTES.md found, using default message"
+          }
+
+          # 查找 MSI 文件和签名
+          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.sig" | Select-Object -First 1
+
+          if ($msiFile -and $sigFile) {
+            $signature = Get-Content $sigFile.FullName -Raw
+            $msiFileName = $msiFile.Name
+
+            $latestJson = @{
+              version = $version
+              date = $date
+              platforms = @{
+                "windows-x86_64" = @{
+                  signature = $signature.Trim()
+                  url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$msiFileName"
+                }
+              }
+              body = $body
+            } | ConvertTo-Json -Depth 4
+
+            $latestJson | Out-File -FilePath "latest.json" -Encoding UTF8
+            Write-Host "Generated latest.json for $msiFileName"
+          } else {
+            Write-Host "MSI file or signature not found!"
+            exit 1
+          }
+
+      - name: 上传 latest.json 到 Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: latest.json
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # 发布完成通知
   notify:

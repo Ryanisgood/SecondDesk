@@ -6,6 +6,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { useFileStore } from './stores/files'
 import { useDrawerStore, DrawerState } from './stores/drawer'
 import { useBatchSelectStore } from './stores/batchSelect'
+import { useUpdaterStore } from './stores/updater'
 import { GLASS_PRESETS, COLOR_THEMES, type GlassStyle } from './config/themes'
 import FileGrid from './components/FileGrid.vue'
 import DateTimeDisplay from './components/DateTimeDisplay.vue'
@@ -15,6 +16,8 @@ import GlobalDialog from './components/GlobalDialog.vue'
 import BatchActionBar from './components/BatchActionBar.vue'
 import MoveTargetPicker from './components/MoveTargetPicker.vue'
 import SearchBox from './components/SearchBox.vue'
+import UpdateNotification from './components/UpdateNotification.vue'
+import UpdateDialog from './components/UpdateDialog.vue'
 import appLogoUrl from './assets/app-logo.png'
 import { getIconPath } from './utils/iconHelper'
 
@@ -25,6 +28,7 @@ const iconSettings = getIconPath('setting')
 const fileStore = useFileStore()
 const drawerStore = useDrawerStore()
 const batchStore = useBatchSelectStore()
+const updaterStore = useUpdaterStore()
 const categoryTabsRef = ref<InstanceType<typeof CategoryTabs> | null>(null)
 const searchBoxRef = ref<InstanceType<typeof SearchBox> | null>(null)
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -483,6 +487,18 @@ onMounted(async () => {
     backgroundBlur.value = blur
   }) as EventListener)
 
+  // 延迟 5 秒检查更新（避免影响启动性能）
+  setTimeout(async () => {
+    console.log('[App] 开始自动检查更新...')
+    const hasUpdate = await updaterStore.checkForUpdates(true)
+    console.log('[App] 更新检查完成, hasUpdate =', hasUpdate, ', showNotification =', updaterStore.showNotification)
+  }, 5000)
+
+  // 每 24 小时检查一次更新
+  setInterval(async () => {
+    await updaterStore.checkForUpdates(true)
+  }, 24 * 60 * 60 * 1000)
+
   // 启动时自动隐藏：如果启用了自动隐藏，启动后先隐藏窗口
   // 用户通过托盘/快捷键/边缘触发来显示
   if (drawerStore.config.behavior.hideOnMouseLeave ||
@@ -900,6 +916,10 @@ async function saveWindowAdjustment() {
       <div class="header-left" data-tauri-drag-region>
         <img class="app-logo" :src="appLogoUrl" alt="Second Desk" data-tauri-drag-region />
         <DateTimeDisplay data-tauri-drag-region />
+
+        <!-- 更新提醒 -->
+        <UpdateNotification />
+
         <button class="icon-btn no-drag" @click="handleRefresh" title="刷新">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -1001,6 +1021,9 @@ async function saveWindowAdjustment() {
 
     <!-- 设置面板 -->
     <SettingsPanel v-if="showSettings" @close="closeSettings" @watch-path-changed="handleWatchPathChanged" />
+
+    <!-- 更新对话框 -->
+    <UpdateDialog />
 
     <!-- 全局对话框 -->
     <GlobalDialog />

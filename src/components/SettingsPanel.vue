@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import { GLASS_PRESETS, COLOR_THEMES, type GlassStyle } from '../config/themes'
 import { applyFullTheme as applyThemeUtil } from '../utils/theme'
 import { useDrawerStore, DrawerSide } from '../stores/drawer'
@@ -8,6 +9,7 @@ import appLogoUrl from '../assets/app-logo.png'
 import FolderCacheManager from './FolderCacheManager.vue'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
+import { useUpdaterStore } from '../stores/updater'
 
 // 图标路径
 const iconGear = getIconPath('gear')
@@ -30,6 +32,7 @@ const emit = defineEmits<{
 
 const drawerStore = useDrawerStore()
 const dialog = useDialog()
+const updaterStore = useUpdaterStore()
 
 // 主题状态（精简为 5 种颜色）
 type ThemeColor = 'blue' | 'green' | 'purple' | 'amber' | 'pink'
@@ -52,6 +55,7 @@ const showHiddenFiles = ref(false)
 const confirmDelete = ref(true)
 const viewMode = ref<'grid' | 'list'>('grid')
 const showCacheManager = ref(false)
+const appVersion = ref('加载中...')
 
 // 背景图片设置
 const backgroundImagePath = ref<string | null>(null)
@@ -64,6 +68,14 @@ onMounted(async () => {
 
   // 从后端加载开机自启状态
   await loadAutoStartStatus()
+
+  // 获取应用版本号
+  try {
+    appVersion.value = await getVersion()
+  } catch (e) {
+    console.error('获取版本号失败', e)
+    appVersion.value = '未知'
+  }
 
   // 监听系统主题变化
   if (window.matchMedia) {
@@ -543,6 +555,21 @@ async function handleKeyUp(e: KeyboardEvent) {
 function cancelCaptureHotkey() {
   isCapturingHotkey.value = false
   capturedKeys.value = []
+}
+
+// 检查更新
+async function handleCheckForUpdates() {
+  try {
+    const hasUpdate = await updaterStore.checkForUpdates(false) // 非静默模式
+    if (hasUpdate) {
+      // 直接打开更新对话框
+      updaterStore.showUpdateDialog()
+    } else {
+      await dialog.info('当前已是最新版本')
+    }
+  } catch (error) {
+    await dialog.error(`检查更新失败：${error}`)
+  }
 }
 
 onMounted(() => {
@@ -1078,8 +1105,20 @@ onMounted(() => {
           <div class="about-info">
             <img class="about-logo" :src="appLogoUrl" alt="Second Desk" />
             <div class="app-name">Second Desk</div>
-            <div class="app-version">版本 0.1.0</div>
+            <div class="app-version">版本 {{ appVersion }}</div>
             <div class="app-desc">基于 Rust + Tauri 的高性能桌面文件管理工具</div>
+          </div>
+
+          <!-- 检查更新按钮 -->
+          <div class="setting-item">
+            <div class="setting-label">检查更新</div>
+            <button
+              class="action-btn small-btn"
+              @click="handleCheckForUpdates"
+              :disabled="updaterStore.checkingUpdate"
+            >
+              {{ updaterStore.checkingUpdate ? '检查中...' : '立即检查' }}
+            </button>
           </div>
         </div>
       </div>
@@ -1540,6 +1579,12 @@ onMounted(() => {
   background: var(--danger-color);
   color: #fff;
   border-color: var(--danger-color);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .small-btn {
