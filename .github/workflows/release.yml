@@ -99,6 +99,9 @@ jobs:
 
       - name: 构建 Tauri 应用
         run: bun tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: 准备发布资产
         shell: pwsh
