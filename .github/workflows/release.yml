@@ -246,27 +246,20 @@ jobs:
             echo "⚠ 未找到签名文件，自动更新功能将无法工作"
           fi
 
-          # 生成 JSON（无缩进问题）
-          cat > latest.json <<'EOFMARKER'
+          # 生成 JSON
+          cat > latest.json << EOF
 {
-  "version": "VERSION_PLACEHOLDER",
-  "notes": NOTES_PLACEHOLDER,
-  "pub_date": "PUBDATE_PLACEHOLDER",
+  "version": "$VERSION",
+  "notes": $NOTES_ESCAPED,
+  "pub_date": "$PUB_DATE",
   "platforms": {
     "windows-x86_64": {
-      "signature": "SIG_PLACEHOLDER",
-      "url": "URL_PLACEHOLDER"
+      "signature": "$win_sig",
+      "url": "$win_url"
     }
   }
 }
-EOFMARKER
-
-          # 替换占位符
-          sed -i "s|VERSION_PLACEHOLDER|$VERSION|g" latest.json
-          sed -i "s|\"NOTES_PLACEHOLDER\"|$NOTES_ESCAPED|g" latest.json
-          sed -i "s|PUBDATE_PLACEHOLDER|$PUB_DATE|g" latest.json
-          sed -i "s|SIG_PLACEHOLDER|$win_sig|g" latest.json
-          sed -i "s|URL_PLACEHOLDER|$win_url|g" latest.json
+EOF
 
           echo "=== Generated latest.json ==="
           cat latest.json
