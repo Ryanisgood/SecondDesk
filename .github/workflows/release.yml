@@ -78,18 +78,27 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart('v')
           $date = Get-Date -Format "yyyy-MM-dd"
 
+          # 调试：显示当前目录结构
+          Write-Host "=== 调试：当前工作目录 ===" -ForegroundColor Cyan
+          Get-Location
+          Write-Host "=== 调试：查找所有 .msi 和 .sig 文件 ===" -ForegroundColor Cyan
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Include "*.msi","*.msi.sig" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+
           # 读取发布说明（如果存在）
           $body = "Release ${{ github.ref_name }}"
           if (Test-Path "RELEASE_NOTES.md") {
-            $body = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
-            Write-Host "Loaded release notes from RELEASE_NOTES.md"
+            $fullContent = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            # 只读取第一个 section
+            $sections = $fullContent -split '(?m)^---\s*$'
+            $body = $sections[0].Trim()
+            Write-Host "Loaded release notes from RELEASE_NOTES.md (first section)"
           } else {
             Write-Host "No RELEASE_NOTES.md found, using default message"
           }
 
           # 查找 MSI 文件和签名
-          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
-          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.sig" | Select-Object -First 1
+          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
 
           if ($msiFile -and $sigFile) {
             $signature = Get-Content $sigFile.FullName -Raw
@@ -110,7 +119,9 @@ jobs:
             $latestJson | Out-File -FilePath "latest.json" -Encoding UTF8
             Write-Host "Generated latest.json for $msiFileName"
           } else {
-            Write-Host "MSI file or signature not found!"
+            Write-Host "MSI file: $($msiFile)" -ForegroundColor Yellow
+            Write-Host "Sig file: $($sigFile)" -ForegroundColor Yellow
+            Write-Host "MSI file or signature not found!" -ForegroundColor Red
             exit 1
           }
 

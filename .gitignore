@@ -41,6 +41,7 @@ src-tauri/Cargo.lock
 # Tauri signing keys (私钥，绝对不能提交)
 ~/.tauri/
 *.key
+.tauri-private-key
 
 # Notes (包含敏感信息)
 notes/
