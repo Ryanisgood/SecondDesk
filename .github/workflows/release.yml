@@ -36,49 +36,37 @@ jobs:
       - name: 安装前端依赖
         run: bun install
 
-      - name: 准备签名密钥
-        shell: bash
+      - name: 构建 Tauri 应用
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
-            echo "❌ TAURI_SIGNING_PRIVATE_KEY 未设置" >&2
+          # 验证密钥
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY 未设置" -ForegroundColor Red
             exit 1
-          fi
-          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
-            echo "❌ TAURI_SIGNING_PRIVATE_KEY_PASSWORD 未设置" >&2
+          }
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+            Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY_PASSWORD 未设置" -ForegroundColor Red
             exit 1
-          fi
+          }
 
-          RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
+          Write-Host "✅ TAURI_SIGNING_PRIVATE_KEY length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)" -ForegroundColor Green
+          Write-Host "✅ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is set" -ForegroundColor Green
 
-          # 情况1：原始两行文本（以 "untrusted comment:" 开头）
-          if echo "$RAW" | head -n1 | grep -q '^untrusted comment:'; then
-            printf '%s\n' "$RAW" > "$KEY_PATH"
-            echo "✅ 使用原始两行密钥文件格式"
-          else
-            # 情况2：整体被 base64 包裹
-            if DECODED=$(printf '%s' "$RAW" | base64 --decode 2>/dev/null) \
-               && echo "$DECODED" | head -n1 | grep -q '^untrusted comment:'; then
-              printf '%s\n' "$DECODED" > "$KEY_PATH"
-              echo "✅ 成功解码 base64 包裹密钥"
-            else
-              # 情况3：纯 Base64 一行 → 构造两行文件
-              if echo "$RAW" | grep -Eq '^[A-Za-z0-9+/=]+$'; then
-                ONE=$(printf '%s' "$RAW" | tr -d '\r\n')
-                printf '%s\n%s\n' "untrusted comment: tauri signing key" "$ONE" > "$KEY_PATH"
-                echo "✅ 使用一行 Base64 私钥，已构造两行文件"
-              else
-                echo "❌ TAURI_SIGNING_PRIVATE_KEY 格式无法识别" >&2
-                exit 1
-              fi
-            fi
-          fi
+          # 调试：显示私钥前缀（不泄露完整内容）
+          $keyPreview = $env:TAURI_SIGNING_PRIVATE_KEY.Substring(0, [Math]::Min(30, $env:TAURI_SIGNING_PRIVATE_KEY.Length))
+          Write-Host "Key preview: $keyPreview..." -ForegroundColor Cyan
 
-          # 将完整私钥内容进行 base64 编码后注入环境变量
-          KEY_B64=$(base64 < "$KEY_PATH" | tr -d '\r\n')
-          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
-          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> "$GITHUB_ENV"
-          echo "✅ Tauri signing key prepared"
+          # 构建
+          bun tauri build
+
+          # 检查签名文件是否生成
+          Write-Host "=== 检查 .sig 文件 ===" -ForegroundColor Cyan
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Filter "*.sig" -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "✅ Found: $($_.FullName)" -ForegroundColor Green
+          }
 
       - name: 读取发布说明
         id: release-notes
@@ -96,12 +84,6 @@ jobs:
           "BODY<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           $body | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: 构建 Tauri 应用
-        run: bun tauri build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: 准备发布资产
         shell: pwsh
