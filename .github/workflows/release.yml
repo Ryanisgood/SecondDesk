@@ -203,8 +203,6 @@ jobs:
           if [ -f "RELEASE_NOTES.md" ]; then
             NOTES=$(awk '/^---/{exit} {print}' RELEASE_NOTES.md)
           fi
-          # 转义 JSON 特殊字符
-          NOTES_ESCAPED=$(printf '%s' "$NOTES" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
           win_url=""
           win_sig=""
@@ -246,26 +244,27 @@ jobs:
             echo "⚠ 未找到签名文件，自动更新功能将无法工作"
           fi
 
-          # 生成 JSON
-          cat > latest.json << EOF
-{
-  "version": "$VERSION",
-  "notes": $NOTES_ESCAPED,
-  "pub_date": "$PUB_DATE",
-  "platforms": {
-    "windows-x86_64": {
-      "signature": "$win_sig",
-      "url": "$win_url"
-    }
-  }
-}
-EOF
+          # 生成 latest.json (使用 jq)
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "Second Desk $TAG" \
+            --arg pub_date "$PUB_DATE" \
+            --arg sig "$win_sig" \
+            --arg url "$win_url" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": {
+                  signature: $sig,
+                  url: $url
+                }
+              }
+            }' > latest.json
 
           echo "=== Generated latest.json ==="
           cat latest.json
-
-          # 验证 JSON 格式
-          python3 -c "import json; json.load(open('latest.json'))" && echo "✅ JSON 格式正确" || echo "❌ JSON 格式错误"
 
       - name: 上传 latest.json
         env:
