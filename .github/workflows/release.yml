@@ -61,6 +61,24 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: 读取发布说明
+        id: release-notes
+        shell: pwsh
+        run: |
+          $body = "Second Desk ${{ github.ref_name }} released."
+          if (Test-Path "RELEASE_NOTES.md") {
+            $fullContent = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            $sections = $fullContent -split '(?m)^---\s*$'
+            $body = $sections[0].Trim()
+            Write-Host "Loaded release notes from RELEASE_NOTES.md"
+          } else {
+            Write-Host "No RELEASE_NOTES.md found, using default message"
+          }
+          # 写入 GitHub Actions 输出（处理多行）
+          "BODY<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $body | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
       - name: 构建 Tauri 应用
         uses: tauri-apps/tauri-action@v0
         id: tauri-build
@@ -71,87 +89,10 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Second Desk ${{ github.ref_name }}'
-          releaseBody: |
-            ## 🎉 Second Desk ${{ github.ref_name }} 发布
-
-            ### 📦 下载安装包（Windows 专用）
-
-            - **`.msi`** - Windows 安装程序（推荐）
-            - **`.exe`** - NSIS 安装程序
-
-            ### 💡 安装说明
-
-            1. 下载 `.msi` 文件（推荐）
-            2. 双击运行安装程序
-            3. 按照向导完成安装
-
-            ### 🔧 系统要求
-
-            - Windows 10/11（64位）
-            - WebView2 运行时（Windows 11 自带）
-
-            ---
-
-            **完整更新日志**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
+          releaseBody: ${{ steps.release-notes.outputs.BODY }}
           releaseDraft: false
           prerelease: false
-
-      - name: 生成 latest.json
-        shell: pwsh
-        run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
-          $date = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
-
-          # 调试：列出 bundle 目录下所有文件
-          Write-Host "=== 调试：bundle 目录所有文件 ===" -ForegroundColor Cyan
-          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-
-          # 读取发布说明（如果存在）
-          $body = "Release ${{ github.ref_name }}"
-          if (Test-Path "RELEASE_NOTES.md") {
-            $fullContent = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
-            $sections = $fullContent -split '(?m)^---\s*$'
-            $body = $sections[0].Trim()
-            Write-Host "Loaded release notes from RELEASE_NOTES.md (first section)"
-          } else {
-            Write-Host "No RELEASE_NOTES.md found, using default message"
-          }
-
-          # Tauri v2：签名文件是 .msi.zip.sig，更新包是 .msi.zip
-          $msiZipFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
-
-          if ($msiZipFile -and $sigFile) {
-            $signature = Get-Content $sigFile.FullName -Raw
-            $msiZipFileName = $msiZipFile.Name
-
-            $latestJson = @{
-              version = $version
-              date = $date
-              platforms = @{
-                "windows-x86_64" = @{
-                  signature = $signature.Trim()
-                  url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$msiZipFileName"
-                }
-              }
-              notes = $body
-            } | ConvertTo-Json -Depth 4
-
-            $latestJson | Out-File -FilePath "latest.json" -Encoding UTF8NoBOM
-            Write-Host "Generated latest.json for $msiZipFileName"
-          } else {
-            Write-Host "msi.zip file: $($msiZipFile)" -ForegroundColor Yellow
-            Write-Host "sig file: $($sigFile)" -ForegroundColor Yellow
-            Write-Host "MSI zip or signature not found! Tauri v2 should generate .msi.zip and .msi.zip.sig files." -ForegroundColor Red
-            Write-Host "Please verify TAURI_SIGNING_PRIVATE_KEY is a valid minisign private key." -ForegroundColor Red
-            exit 1
-          }
-
-      - name: 上传 latest.json 到 Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: latest.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          updaterJsonPreferNsis: false
 
   # 发布完成通知
   notify:
