@@ -3,12 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # 匹配 v1.0.0, v0.1.0 等
+      - 'v*.*.*'
 
 env:
   RUST_BACKTRACE: 1
 
-# 授予 GITHUB_TOKEN 创建 Release 的权限
 permissions:
   contents: write
 
@@ -37,29 +36,49 @@ jobs:
       - name: 安装前端依赖
         run: bun install
 
-      - name: 验证签名密钥
-        shell: pwsh
+      - name: 准备签名密钥
+        shell: bash
         run: |
-          $failed = $false
-          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
-            Write-Host "✓ TAURI_SIGNING_PRIVATE_KEY is set (length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length))" -ForegroundColor Green
-          } else {
-            Write-Host "✗ TAURI_SIGNING_PRIVATE_KEY is NOT set!" -ForegroundColor Red
-            $failed = $true
-          }
-          if ($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
-            Write-Host "✓ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is set" -ForegroundColor Green
-          } else {
-            Write-Host "✗ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is NOT set!" -ForegroundColor Red
-            $failed = $true
-          }
-          if ($failed) {
-            Write-Host "签名密钥缺失，请在 GitHub Secrets 中配置 TAURI_SIGNING_PRIVATE_KEY 和 TAURI_SIGNING_PRIVATE_KEY_PASSWORD" -ForegroundColor Red
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "❌ TAURI_SIGNING_PRIVATE_KEY 未设置" >&2
             exit 1
-          }
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          fi
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
+            echo "❌ TAURI_SIGNING_PRIVATE_KEY_PASSWORD 未设置" >&2
+            exit 1
+          fi
+
+          RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
+
+          # 情况1：原始两行文本（以 "untrusted comment:" 开头）
+          if echo "$RAW" | head -n1 | grep -q '^untrusted comment:'; then
+            printf '%s\n' "$RAW" > "$KEY_PATH"
+            echo "✅ 使用原始两行密钥文件格式"
+          else
+            # 情况2：整体被 base64 包裹
+            if DECODED=$(printf '%s' "$RAW" | base64 --decode 2>/dev/null) \
+               && echo "$DECODED" | head -n1 | grep -q '^untrusted comment:'; then
+              printf '%s\n' "$DECODED" > "$KEY_PATH"
+              echo "✅ 成功解码 base64 包裹密钥"
+            else
+              # 情况3：纯 Base64 一行 → 构造两行文件
+              if echo "$RAW" | grep -Eq '^[A-Za-z0-9+/=]+$'; then
+                ONE=$(printf '%s' "$RAW" | tr -d '\r\n')
+                printf '%s\n%s\n' "untrusted comment: tauri signing key" "$ONE" > "$KEY_PATH"
+                echo "✅ 使用一行 Base64 私钥，已构造两行文件"
+              else
+                echo "❌ TAURI_SIGNING_PRIVATE_KEY 格式无法识别" >&2
+                exit 1
+              fi
+            fi
+          fi
+
+          # 将完整私钥内容进行 base64 编码后注入环境变量
+          KEY_B64=$(base64 < "$KEY_PATH" | tr -d '\r\n')
+          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "✅ Tauri signing key prepared"
 
       - name: 读取发布说明
         id: release-notes
@@ -74,30 +93,197 @@ jobs:
           } else {
             Write-Host "No RELEASE_NOTES.md found, using default message"
           }
-          # 写入 GitHub Actions 输出（处理多行）
           "BODY<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           $body | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: 构建 Tauri 应用
-        uses: tauri-apps/tauri-action@v0
-        id: tauri-build
+        run: bun tauri build
+
+      - name: 准备发布资产
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          $VERSION = "${{ github.ref_name }}"
+
+          Write-Host "=== Bundle 目录文件列表 ===" -ForegroundColor Cyan
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+
+          # MSI 安装包
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($msi) {
+            $destName = "SecondDesk-$VERSION-Windows.msi"
+            Copy-Item $msi.FullName "release-assets/$destName"
+            Write-Host "✓ MSI copied: $destName" -ForegroundColor Green
+
+            # MSI 签名文件
+            $msiSig = "$($msi.FullName).sig"
+            if (Test-Path $msiSig) {
+              Copy-Item $msiSig "release-assets/$destName.sig"
+              Write-Host "✓ MSI signature copied: $destName.sig" -ForegroundColor Green
+            } else {
+              Write-Host "⚠ MSI signature not found" -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "⚠ MSI not found" -ForegroundColor Yellow
+          }
+
+          # NSIS 安装包
+          $nsis = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($nsis) {
+            $destName = "SecondDesk-$VERSION-Windows-Setup.exe"
+            Copy-Item $nsis.FullName "release-assets/$destName"
+            Write-Host "✓ NSIS copied: $destName" -ForegroundColor Green
+
+            # NSIS 签名文件
+            $nsisSig = "$($nsis.FullName).sig"
+            if (Test-Path $nsisSig) {
+              Copy-Item $nsisSig "release-assets/$destName.sig"
+              Write-Host "✓ NSIS signature copied: $destName.sig" -ForegroundColor Green
+            }
+          }
+
+          Write-Host "=== 准备上传的文件 ===" -ForegroundColor Cyan
+          Get-ChildItem -Path "release-assets" | ForEach-Object { Write-Host $_.Name }
+
+      - name: 上传发布资产
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Second Desk ${{ github.ref_name }}'
+          body: ${{ steps.release-notes.outputs.BODY }}
+          prerelease: false
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Second Desk ${{ github.ref_name }}'
-          releaseBody: ${{ steps.release-notes.outputs.BODY }}
-          releaseDraft: false
-          prerelease: false
-          updaterJsonPreferNsis: false
+
+      - name: 调试输出
+        if: always()
+        shell: bash
+        run: |
+          echo "=== 查找所有 .sig 文件 ==="
+          find src-tauri/target -name "*.sig" 2>/dev/null || echo "No .sig files found"
+
+  # 生成 latest.json（在发布完成后从 Release 下载签名文件）
+  assemble-latest-json:
+    name: 生成 latest.json
+    runs-on: ubuntu-latest
+    needs: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载 Release 资产
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p dl
+          gh release download "$TAG" --dir dl --repo "$GITHUB_REPOSITORY" || true
+          echo "=== 下载的文件 ==="
+          ls -la dl || true
+
+      - name: 生成 latest.json
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          base_url="https://github.com/$REPO/releases/download/$TAG"
+
+          # 读取发布说明
+          NOTES="Second Desk $TAG released."
+          if [ -f "RELEASE_NOTES.md" ]; then
+            NOTES=$(awk '/^---/{exit} {print}' RELEASE_NOTES.md)
+          fi
+          # 转义 JSON 特殊字符
+          NOTES_ESCAPED=$(printf '%s' "$NOTES" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+
+          win_url=""
+          win_sig=""
+
+          # 查找 Windows MSI 签名
+          shopt -s nullglob
+          for sig in dl/*.msi.sig; do
+            base="${sig%.sig}"
+            fname=$(basename "$base")
+            win_url="$base_url/$fname"
+            win_sig=$(cat "$sig" | tr -d '\r\n')
+            echo "Found Windows MSI signature: $fname"
+            break
+          done
+
+          # 如果没有 MSI 签名，尝试 NSIS
+          if [ -z "$win_sig" ]; then
+            for sig in dl/*.exe.sig; do
+              base="${sig%.sig}"
+              fname=$(basename "$base")
+              win_url="$base_url/$fname"
+              win_sig=$(cat "$sig" | tr -d '\r\n')
+              echo "Found Windows NSIS signature: $fname"
+              break
+            done
+          fi
+
+          # 如果没有签名，使用 MSI 文件 URL（无签名）
+          if [ -z "$win_url" ]; then
+            for msi in dl/*.msi; do
+              fname=$(basename "$msi")
+              win_url="$base_url/$fname"
+              echo "Using MSI without signature: $fname"
+              break
+            done
+          fi
+
+          if [ -z "$win_sig" ]; then
+            echo "⚠ 未找到签名文件，自动更新功能将无法工作"
+          fi
+
+          # 生成 JSON（无缩进问题）
+          cat > latest.json <<'EOFMARKER'
+{
+  "version": "VERSION_PLACEHOLDER",
+  "notes": NOTES_PLACEHOLDER,
+  "pub_date": "PUBDATE_PLACEHOLDER",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "SIG_PLACEHOLDER",
+      "url": "URL_PLACEHOLDER"
+    }
+  }
+}
+EOFMARKER
+
+          # 替换占位符
+          sed -i "s|VERSION_PLACEHOLDER|$VERSION|g" latest.json
+          sed -i "s|\"NOTES_PLACEHOLDER\"|$NOTES_ESCAPED|g" latest.json
+          sed -i "s|PUBDATE_PLACEHOLDER|$PUB_DATE|g" latest.json
+          sed -i "s|SIG_PLACEHOLDER|$win_sig|g" latest.json
+          sed -i "s|URL_PLACEHOLDER|$win_url|g" latest.json
+
+          echo "=== Generated latest.json ==="
+          cat latest.json
+
+          # 验证 JSON 格式
+          python3 -c "import json; json.load(open('latest.json'))" && echo "✅ JSON 格式正确" || echo "❌ JSON 格式错误"
+
+      - name: 上传 latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" latest.json --clobber --repo "$GITHUB_REPOSITORY"
 
   # 发布完成通知
   notify:
     name: 发布完成
-    needs: release
+    needs: [release, assemble-latest-json]
     runs-on: ubuntu-latest
     if: success()
 
