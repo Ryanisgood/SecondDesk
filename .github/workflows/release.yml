@@ -37,6 +37,30 @@ jobs:
       - name: 安装前端依赖
         run: bun install
 
+      - name: 验证签名密钥
+        shell: pwsh
+        run: |
+          $failed = $false
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Host "✓ TAURI_SIGNING_PRIVATE_KEY is set (length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length))" -ForegroundColor Green
+          } else {
+            Write-Host "✗ TAURI_SIGNING_PRIVATE_KEY is NOT set!" -ForegroundColor Red
+            $failed = $true
+          }
+          if ($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+            Write-Host "✓ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is set" -ForegroundColor Green
+          } else {
+            Write-Host "✗ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is NOT set!" -ForegroundColor Red
+            $failed = $true
+          }
+          if ($failed) {
+            Write-Host "签名密钥缺失，请在 GitHub Secrets 中配置 TAURI_SIGNING_PRIVATE_KEY 和 TAURI_SIGNING_PRIVATE_KEY_PASSWORD" -ForegroundColor Red
+            exit 1
+          }
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
       - name: 构建 Tauri 应用
         uses: tauri-apps/tauri-action@v0
         id: tauri-build
