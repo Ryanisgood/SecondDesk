@@ -5,7 +5,7 @@
   "plugins": {
     "updater": {
       "active": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVDQzlCQjBBMUYwNjRCMzEKUldReFN3WWZDcnZKWEhYaExWc0VWMVVNSW1oLytJOXVXcWZ4V0U3RkxSeTU5RnpOaVZmUHhlRlcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhCNTJBNDQ4MEVEQkY1NDQKUldSRTlkc09TS1JTaTVqNGtJNmRNbVVBRmZKZm1WMi9DVml6QVNSNlN1NHU5WEVtNm14MmJobHMK",
       "endpoints": [
         "https://github.com/Ryanisgood/SecondDesk/releases/latest/download/latest.json"
       ],

@@ -39,11 +39,11 @@ jobs:
       - name: 构建 Tauri 应用
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # 验证密钥
-          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY_B64) {
             Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY 未设置" -ForegroundColor Red
             exit 1
           }
@@ -52,12 +52,16 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ TAURI_SIGNING_PRIVATE_KEY length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)" -ForegroundColor Green
-          Write-Host "✅ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is set" -ForegroundColor Green
-
-          # 调试：显示私钥前缀（不泄露完整内容）
-          $keyPreview = $env:TAURI_SIGNING_PRIVATE_KEY.Substring(0, [Math]::Min(30, $env:TAURI_SIGNING_PRIVATE_KEY.Length))
-          Write-Host "Key preview: $keyPreview..." -ForegroundColor Cyan
+          # 解码 base64 私钥
+          $decodedKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64))
+          Write-Host "✅ 私钥已解码，长度: $($decodedKey.Length) 字符" -ForegroundColor Green
+          
+          # 显示密钥前缀（验证格式）
+          $keyLines = $decodedKey -split "`n"
+          Write-Host "密钥第一行: $($keyLines[0])" -ForegroundColor Cyan
+          
+          # 设置解码后的私钥为环境变量
+          $env:TAURI_SIGNING_PRIVATE_KEY = $decodedKey
 
           # 构建
           bun tauri build
