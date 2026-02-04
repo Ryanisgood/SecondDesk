@@ -100,19 +100,16 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $date = Get-Date -Format "yyyy-MM-dd"
+          $date = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
 
-          # 调试：显示当前目录结构
-          Write-Host "=== 调试：当前工作目录 ===" -ForegroundColor Cyan
-          Get-Location
-          Write-Host "=== 调试：查找所有 .msi 和 .sig 文件 ===" -ForegroundColor Cyan
-          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Include "*.msi","*.msi.sig" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          # 调试：列出 bundle 目录下所有文件
+          Write-Host "=== 调试：bundle 目录所有文件 ===" -ForegroundColor Cyan
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
 
           # 读取发布说明（如果存在）
           $body = "Release ${{ github.ref_name }}"
           if (Test-Path "RELEASE_NOTES.md") {
             $fullContent = Get-Content "RELEASE_NOTES.md" -Raw -Encoding UTF8
-            # 只读取第一个 section
             $sections = $fullContent -split '(?m)^---\s*$'
             $body = $sections[0].Trim()
             Write-Host "Loaded release notes from RELEASE_NOTES.md (first section)"
@@ -120,13 +117,13 @@ jobs:
             Write-Host "No RELEASE_NOTES.md found, using default message"
           }
 
-          # 查找 MSI 文件和签名
-          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
+          # Tauri v2：签名文件是 .msi.zip.sig，更新包是 .msi.zip
+          $msiZipFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-          if ($msiFile -and $sigFile) {
+          if ($msiZipFile -and $sigFile) {
             $signature = Get-Content $sigFile.FullName -Raw
-            $msiFileName = $msiFile.Name
+            $msiZipFileName = $msiZipFile.Name
 
             $latestJson = @{
               version = $version
@@ -134,18 +131,19 @@ jobs:
               platforms = @{
                 "windows-x86_64" = @{
                   signature = $signature.Trim()
-                  url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$msiFileName"
+                  url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$msiZipFileName"
                 }
               }
-              body = $body
+              notes = $body
             } | ConvertTo-Json -Depth 4
 
-            $latestJson | Out-File -FilePath "latest.json" -Encoding UTF8
-            Write-Host "Generated latest.json for $msiFileName"
+            $latestJson | Out-File -FilePath "latest.json" -Encoding UTF8NoBOM
+            Write-Host "Generated latest.json for $msiZipFileName"
           } else {
-            Write-Host "MSI file: $($msiFile)" -ForegroundColor Yellow
-            Write-Host "Sig file: $($sigFile)" -ForegroundColor Yellow
-            Write-Host "MSI file or signature not found!" -ForegroundColor Red
+            Write-Host "msi.zip file: $($msiZipFile)" -ForegroundColor Yellow
+            Write-Host "sig file: $($sigFile)" -ForegroundColor Yellow
+            Write-Host "MSI zip or signature not found! Tauri v2 should generate .msi.zip and .msi.zip.sig files." -ForegroundColor Red
+            Write-Host "Please verify TAURI_SIGNING_PRIVATE_KEY is a valid minisign private key." -ForegroundColor Red
             exit 1
           }
 
