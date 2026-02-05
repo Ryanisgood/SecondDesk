@@ -39,12 +39,18 @@ jobs:
       - name: 构建 Tauri 应用
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          $ErrorActionPreference = "Stop"
+
           # 验证密钥
-          if (-not $env:TAURI_SIGNING_PRIVATE_KEY_B64) {
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
             Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY 未设置" -ForegroundColor Red
+            exit 1
+          }
+          if ($env:TAURI_SIGNING_PRIVATE_KEY -match '\s') {
+            Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY 必须是一行 base64（不能包含空格/换行）" -ForegroundColor Red
             exit 1
           }
           if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
@@ -52,21 +58,9 @@ jobs:
             exit 1
           }
 
-          # 解码 base64 私钥并写入临时文件（避免环境变量丢失换行符）
-          $decodedBytes = [System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64)
-          $keyPath = "$env:RUNNER_TEMP\tauri-signing.key"
-          [System.IO.File]::WriteAllBytes($keyPath, $decodedBytes)
-          Write-Host "✅ 私钥已解码并写入: $keyPath ($($decodedBytes.Length) bytes)" -ForegroundColor Green
-
-          # 验证文件内容格式
-          $firstLine = (Get-Content $keyPath -First 1)
-          Write-Host "密钥第一行: $firstLine" -ForegroundColor Cyan
-
-          # 设置文件路径为环境变量（Tauri 支持路径或内容）
-          $env:TAURI_SIGNING_PRIVATE_KEY = $keyPath
-
           # 构建
           bun tauri build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           # 检查签名文件是否生成
           Write-Host "=== 检查 .sig 文件 ===" -ForegroundColor Cyan
