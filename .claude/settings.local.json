@@ -6,7 +6,8 @@
       "Bash(ls:*)",
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(cargo check:*)",
-      "WebFetch(domain:blog.hellager.com)"
+      "WebFetch(domain:blog.hellager.com)",
+      "mcp__mcpServers__query-docs"
     ]
   }
 }

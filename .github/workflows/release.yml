@@ -52,16 +52,18 @@ jobs:
             exit 1
           }
 
-          # 解码 base64 私钥
-          $decodedKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64))
-          Write-Host "✅ 私钥已解码，长度: $($decodedKey.Length) 字符" -ForegroundColor Green
-          
-          # 显示密钥前缀（验证格式）
-          $keyLines = $decodedKey -split "`n"
-          Write-Host "密钥第一行: $($keyLines[0])" -ForegroundColor Cyan
-          
-          # 设置解码后的私钥为环境变量
-          $env:TAURI_SIGNING_PRIVATE_KEY = $decodedKey
+          # 解码 base64 私钥并写入临时文件（避免环境变量丢失换行符）
+          $decodedBytes = [System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64)
+          $keyPath = "$env:RUNNER_TEMP\tauri-signing.key"
+          [System.IO.File]::WriteAllBytes($keyPath, $decodedBytes)
+          Write-Host "✅ 私钥已解码并写入: $keyPath ($($decodedBytes.Length) bytes)" -ForegroundColor Green
+
+          # 验证文件内容格式
+          $firstLine = (Get-Content $keyPath -First 1)
+          Write-Host "密钥第一行: $firstLine" -ForegroundColor Cyan
+
+          # 设置文件路径为环境变量（Tauri 支持路径或内容）
+          $env:TAURI_SIGNING_PRIVATE_KEY = $keyPath
 
           # 构建
           bun tauri build
