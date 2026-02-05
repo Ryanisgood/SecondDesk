@@ -5,7 +5,8 @@
       "Bash(cargo tree:*)",
       "Bash(ls:*)",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "WebFetch(domain:blog.hellager.com)"
     ]
   }
 }
