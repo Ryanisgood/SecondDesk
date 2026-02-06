@@ -2,4 +2,5 @@
 // 暴露给前端的 Tauri 命令
 
 pub mod file_ops;
+pub mod watch_paths;
 pub mod window_control;

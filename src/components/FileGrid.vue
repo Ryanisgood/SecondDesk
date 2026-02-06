@@ -47,13 +47,17 @@ const { isLongPressing, handlePointerDown, handlePointerMove, handlePointerUp, c
   }
 })
 
-// 获取显示名称（隐藏 .url 和 .lnk 扩展名）
-function getDisplayName(fileName: string): string {
-  const lower = fileName.toLowerCase()
+// 获取显示名称（隐藏 .url 和 .lnk 扩展名，聚合视图下显示重名后缀）
+function getDisplayName(file: FileItem): string {
+  // 聚合视图：优先使用 store 的重名映射
+  const storeDisplayName = fileStore.getDisplayName(file)
+  const name = storeDisplayName !== file.fileName ? storeDisplayName : file.fileName
+
+  const lower = name.toLowerCase()
   if (lower.endsWith('.url') || lower.endsWith('.lnk')) {
-    return fileName.slice(0, fileName.lastIndexOf('.'))
+    return name.slice(0, name.lastIndexOf('.'))
   }
-  return fileName
+  return name
 }
 
 // 处理图标加载失败
@@ -778,7 +782,7 @@ function getDragTargetClass(item: DisplayItem): string {
           </div>
 
           <div class="file-info">
-            <div class="file-name" :title="item.data.fileName">{{ getDisplayName(item.data.fileName) }}</div>
+            <div class="file-name" :title="item.data.fileName">{{ getDisplayName(item.data) }}</div>
             <!-- 列表模式：收藏按钮在 file-info 内部，自动在右侧 -->
             <button
               v-if="props.viewMode === 'list' && !batchStore.isActive"

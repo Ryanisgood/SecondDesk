@@ -5,6 +5,7 @@ import { getVersion } from '@tauri-apps/api/app'
 import { GLASS_PRESETS, COLOR_THEMES, type GlassStyle } from '../config/themes'
 import { applyFullTheme as applyThemeUtil } from '../utils/theme'
 import { useDrawerStore, DrawerSide } from '../stores/drawer'
+import { useWatchPathsStore } from '../stores/watchPaths'
 import appLogoUrl from '../assets/app-logo.png'
 import FolderCacheManager from './FolderCacheManager.vue'
 import { useDialog } from '../composables/useDialog'
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 const drawerStore = useDrawerStore()
 const dialog = useDialog()
 const updaterStore = useUpdaterStore()
+const watchPathsStore = useWatchPathsStore()
 
 // 主题状态（精简为 5 种颜色）
 type ThemeColor = 'blue' | 'green' | 'purple' | 'amber' | 'pink'
@@ -65,6 +67,9 @@ const backgroundBlur = ref(0)
 // 从 localStorage 加载设置
 onMounted(async () => {
   loadSettings()
+
+  // 加载监控路径
+  await watchPathsStore.loadWatchPaths()
 
   // 从后端加载开机自启状态
   await loadAutoStartStatus()
@@ -279,37 +284,51 @@ async function handleFileWatcherEnabledChange(enabled: boolean) {
   await drawerStore.saveConfig()
 }
 
-async function handleSelectWatchPath() {
+// 多路径管理
+async function handleAddWatchPath() {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
 
-    // 隐藏窗口以便选择文件夹
     const appWindow = getCurrentWindow()
     await appWindow.hide()
 
     try {
       const selectedPath = await invoke<string | null>('select_folder')
       if (selectedPath) {
-        drawerStore.config.fileWatcher.customPath = selectedPath
-        await drawerStore.saveConfig()
+        await watchPathsStore.addPath(selectedPath)
         emit('watch-path-changed', selectedPath)
       }
     } finally {
-      // 无论成功还是取消，都重新显示窗口
       await appWindow.show()
       await appWindow.setFocus()
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
-    await dialog.error(`选择文件夹失败: ${error}`)
+    console.error('添加监控路径失败:', error)
+    await dialog.error(`添加监控路径失败: ${error}`)
   }
 }
 
-async function handleResetWatchPath() {
-  drawerStore.config.fileWatcher.customPath = null
-  await drawerStore.saveConfig()
-  emit('watch-path-changed', null)
+async function handleRemoveWatchPath(pathId: string) {
+  const confirmed = await dialog.confirmDanger('确定要移除此监控路径吗？', { title: '移除路径' })
+  if (!confirmed) return
+
+  try {
+    await watchPathsStore.removePath(pathId)
+    emit('watch-path-changed', null)
+  } catch (error) {
+    console.error('移除监控路径失败:', error)
+    await dialog.error(`移除监控路径失败: ${error}`)
+  }
+}
+
+async function handleToggleWatchPathEnabled(pathId: string, enabled: boolean) {
+  try {
+    await watchPathsStore.setPathEnabled(pathId, enabled)
+    emit('watch-path-changed', null)
+  } catch (error) {
+    console.error('更新路径状态失败:', error)
+  }
 }
 
 function handleViewModeChange(mode: 'grid' | 'list') {
@@ -862,31 +881,58 @@ onMounted(() => {
 
           <div v-if="drawerStore.config.fileWatcher.enabled" class="sub-settings">
             <div class="setting-item column">
-              <div class="setting-label">监控文件夹</div>
-              <div class="path-input-group">
-                <input
-                  type="text"
-                  class="path-input"
-                  :value="drawerStore.config.fileWatcher.customPath || '桌面（默认）'"
-                  :readonly="true"
-                  :placeholder="'桌面（默认）'"
-                />
+              <div class="setting-label">监控文件夹（最多 {{ watchPathsStore.MAX_WATCH_PATHS }} 个）</div>
+
+              <!-- 所有路径列表（桌面 + 自定义，统一展示） -->
+              <div
+                v-for="wp in watchPathsStore.watchPaths"
+                :key="wp.id"
+                class="watch-path-item"
+              >
+                <span class="watch-path-icon">{{ wp.builtin ? '🖥️' : '📁' }}</span>
+                <div class="watch-path-info">
+                  <span class="watch-path-name">{{ watchPathsStore.getEntryLabel(wp) }}</span>
+                  <span v-if="wp.builtin" class="watch-path-badge">内置</span>
+                  <span v-else class="watch-path-detail" :title="wp.path">{{ wp.path }}</span>
+                </div>
+                <label class="toggle-switch toggle-switch-sm">
+                  <input
+                    type="checkbox"
+                    :checked="wp.enabled"
+                    :disabled="wp.enabled && !watchPathsStore.canDisable(wp.id)"
+                    @change="handleToggleWatchPathEnabled(wp.id, !wp.enabled)"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+                <!-- 非内置路径才显示删除按钮 -->
                 <button
-                  class="path-btn"
-                  @click="handleSelectWatchPath"
+                  v-if="!wp.builtin"
+                  class="watch-path-remove"
+                  @click="handleRemoveWatchPath(wp.id)"
+                  title="移除"
                 >
-                  选择
-                </button>
-                <button
-                  v-if="drawerStore.config.fileWatcher.customPath"
-                  class="path-btn reset"
-                  @click="handleResetWatchPath"
-                >
-                  重置
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
                 </button>
               </div>
+
+              <!-- 添加按钮（未达上限时显示） -->
+              <button
+                v-if="watchPathsStore.canAddPath"
+                class="add-path-btn"
+                @click="handleAddWatchPath"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                添加文件夹
+              </button>
+
               <div class="setting-hint">
-                选择自定义文件夹进行监控，重置后监控桌面
+                最多同时监控 {{ watchPathsStore.MAX_WATCH_PATHS }} 个文件夹，至少保留 1 个启用
               </div>
             </div>
           </div>
@@ -1522,6 +1568,103 @@ onMounted(() => {
 
 .path-btn.reset:hover {
   color: var(--text-primary);
+}
+
+/* 多路径管理列表 */
+.watch-path-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--bg-base-rgb), 0.3);
+  border: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.watch-path-icon {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+}
+
+.watch-path-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.watch-path-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-path-detail {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-path-badge {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  background: rgba(var(--primary-color-rgb), 0.1);
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+.watch-path-remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.watch-path-remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.toggle-switch-sm {
+  transform: scale(0.8);
+  transform-origin: center;
+}
+
+.add-path-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: all 0.15s;
+}
+
+.add-path-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.05);
 }
 
 .setting-hint {

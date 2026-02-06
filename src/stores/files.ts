@@ -144,6 +144,7 @@ type IconOrderState = {
 type IconOrderMap = Record<string, IconOrderState>
 
 const DESKTOP_PATH_KEY = '__desktop__'
+const ALL_PATHS_KEY = '__all__'
 const ICON_ORDER_STORAGE_KEY = 'seconddesk_icon_order_v1'
 const SORT_MODE_STORAGE_KEY = 'seconddesk_sort_mode_v1'
 
@@ -591,6 +592,11 @@ export const useFileStore = defineStore('files', () => {
   const enabledPresetCategories = ref<Set<string>>(loadEnabledPresetCategoriesFromStorage())
   const categoryOrder = ref<string[]>(loadCategoryOrderFromStorage())
   const virtualFoldersMap = ref<VirtualFoldersMap>(loadVirtualFoldersMapFromStorage())
+
+  // 聚合视图：各文件夹文件缓存（key=pathKey）
+  const folderFilesCache = ref<Record<string, FileItem[]>>({})
+  // 聚合视图：重名文件显示名映射（key=filePath, value=带后缀的显示名）
+  const fileDisplayNameMap = ref<Map<string, string>>(new Map())
 
   // 当前路径的收藏集合（兼容旧代码）
   const favoritesSet = computed({
@@ -1146,6 +1152,120 @@ export const useFileStore = defineStore('files', () => {
     }
   }
 
+  // ==================== 多文件夹聚合视图 ====================
+
+  /** 加载所有文件夹的文件（聚合视图） */
+  async function loadAllFoldersFiles(paths: { id: string; path: string }[]) {
+    // 取消之前的图标提取
+    if (iconExtractionAbortController) {
+      iconExtractionAbortController.abort()
+      iconExtractionAbortController = null
+    }
+
+    currentPath.value = ALL_PATHS_KEY
+    loading.value = true
+    loadingIcons.value = false
+
+    try {
+      const allFiles: FileItem[] = []
+      const cache: Record<string, FileItem[]> = {}
+
+      // 对每个路径调用 get_file_info
+      for (const { id, path } of paths) {
+        try {
+          // 桌面需要传 null 以触发双桌面（用户桌面 + 公共桌面）扫描
+          const scanPath = id === DESKTOP_PATH_KEY ? null : path
+          const result = await invoke<FileItem[]>('get_file_info', { path: scanPath })
+
+          // 恢复收藏状态（从源文件夹的 favoritesMap）
+          // 桌面使用 __desktop__ key，自定义路径使用实际路径
+          const sourcePathKey = id === DESKTOP_PATH_KEY ? DESKTOP_PATH_KEY : path
+          const sourceFavArr = favoritesMap.value[sourcePathKey] ?? []
+          const sourceFavSet = new Set(sourceFavArr)
+          result.forEach(file => {
+            file.isFavorite = sourceFavSet.has(file.filePath)
+
+            const snake = (file as unknown as { f_type?: unknown }).f_type
+            if (!file.fType && typeof snake === 'string') {
+              file.fType = snake
+            }
+            if (!file.fType) {
+              file.fType = 'file'
+            }
+          })
+
+          cache[sourcePathKey] = result
+          allFiles.push(...result)
+        } catch (error) {
+          console.error(`加载文件夹失败 (${path}):`, error)
+        }
+      }
+
+      folderFilesCache.value = cache
+
+      // 计算重名显示名
+      computeDisplayNames(allFiles)
+
+      // 使用 __all__ pathKey 的排序
+      const pathKey = ALL_PATHS_KEY
+      const nextOrderState = syncIconOrderState(iconOrderMap.value[pathKey], allFiles, virtualFolders.value)
+      iconOrderMap.value[pathKey] = nextOrderState
+      saveIconOrderToStorage(iconOrderMap.value)
+
+      const sortMode = sortModeMap.value[pathKey] ?? 'manual'
+      files.value = applySortModeToList(sortFilesForDisplay(allFiles, nextOrderState), sortMode)
+      applyAllFilters()
+
+      // 批量提取图标
+      extractIconsInBatches(allFiles)
+    } catch (error) {
+      console.error('❌ 加载聚合文件失败：', error)
+      files.value = []
+      filteredFiles.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 计算重名文件的显示名（追加文件夹名后缀） */
+  function computeDisplayNames(allFiles: FileItem[]) {
+    const nameMap = new Map<string, FileItem[]>()
+    for (const file of allFiles) {
+      const existing = nameMap.get(file.fileName) ?? []
+      existing.push(file)
+      nameMap.set(file.fileName, existing)
+    }
+
+    const displayMap = new Map<string, string>()
+    for (const [fileName, filesWithName] of nameMap) {
+      if (filesWithName.length > 1) {
+        for (const file of filesWithName) {
+          // 从文件路径提取父文件夹名
+          const parts = file.filePath.replace(/\\/g, '/').split('/')
+          const parentFolder = parts.length >= 2 ? parts[parts.length - 2] : ''
+          displayMap.set(file.filePath, `${fileName} (${parentFolder})`)
+        }
+      }
+    }
+    fileDisplayNameMap.value = displayMap
+  }
+
+  /** 获取文件的显示名（聚合视图下重名文件带文件夹名后缀） */
+  function getDisplayName(file: FileItem): string {
+    const mapped = fileDisplayNameMap.value.get(file.filePath)
+    return mapped ?? file.fileName
+  }
+
+  /** 查找文件所属的源文件夹 pathKey（聚合视图中用于收藏穿透写入） */
+  function findSourcePathKey(filePath: string): string | null {
+    for (const [cacheKey, fileList] of Object.entries(folderFilesCache.value)) {
+      if (fileList.some(f => f.filePath === filePath)) {
+        return cacheKey  // __desktop__ 或实际文件夹路径
+      }
+    }
+    return null
+  }
+
   function toggleFavorite(filePath: string) {
     const file = files.value.find(f => f.filePath === filePath)
     if (file) {
@@ -1167,14 +1287,35 @@ export const useFileStore = defineStore('files', () => {
       file.isFavorite = !file.isFavorite
       iconOrderMap.value[pathKey] = currentOrderState
 
-      // 更新收藏集合并持久化（通过 computed setter 自动保存）
-      const newFavorites = new Set(favoritesSet.value)
-      if (file.isFavorite) {
-        newFavorites.add(filePath)
+      // 聚合视图：收藏穿透写回源文件夹
+      if (currentPath.value === ALL_PATHS_KEY) {
+        const sourceKey = findSourcePathKey(filePath)
+        if (sourceKey) {
+          const sourceFavArr = favoritesMap.value[sourceKey] ?? []
+          const sourceFavSet = new Set(sourceFavArr)
+          if (file.isFavorite) {
+            sourceFavSet.add(filePath)
+          } else {
+            sourceFavSet.delete(filePath)
+          }
+          favoritesMap.value = {
+            ...favoritesMap.value,
+            [sourceKey]: Array.from(sourceFavSet)
+          }
+          saveFavoritesMapToStorage(favoritesMap.value)
+        }
       } else {
-        newFavorites.delete(filePath)
+        // 单文件夹视图：原有逻辑
+        const newFavorites = new Set(favoritesSet.value)
+        if (file.isFavorite) {
+          newFavorites.add(filePath)
+        } else {
+          newFavorites.delete(filePath)
+        }
+        favoritesSet.value = newFavorites
       }
-      favoritesSet.value = newFavorites
+
+      // __all__ pathKey 的排序也要更新
       saveIconOrderToStorage(iconOrderMap.value)
 
       const sortMode = getSortModeForCurrentPath()
@@ -1981,8 +2122,12 @@ export const useFileStore = defineStore('files', () => {
     fileCount,
     favoriteFiles,
     fileTypeOptions,
+    // 常量
+    ALL_PATHS_KEY,
     // 方法
     loadFiles,
+    loadAllFoldersFiles,
+    getDisplayName,
     toggleFavorite,
     searchFiles,
     setActiveCategory,

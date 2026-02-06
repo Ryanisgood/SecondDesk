@@ -17,6 +17,9 @@ pub struct FileChangeEvent {
     pub change_type: String,
     /// 受影响的文件路径
     pub paths: Vec<String>,
+    /// 来源路径标识（用于多文件夹监控时区分来源）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_path_id: Option<String>,
 }
 
 /// 文件系统监控器
@@ -25,16 +28,19 @@ pub struct FileWatcher {
     app_handle: AppHandle,
     initial_paths: Vec<PathBuf>,
     debounce_ms: u64,
+    /// 路径标识（用于多文件夹监控时区分来源）
+    path_id: Option<String>,
 }
 
 impl FileWatcher {
     /// 创建新的文件监控器
-    pub fn new(app_handle: AppHandle, watch_paths: Vec<PathBuf>, debounce_ms: u64) -> Self {
+    pub fn new(app_handle: AppHandle, watch_paths: Vec<PathBuf>, debounce_ms: u64, path_id: Option<String>) -> Self {
         Self {
             enabled: Arc::new(AtomicBool::new(true)),
             app_handle,
             initial_paths: watch_paths,
             debounce_ms,
+            path_id,
         }
     }
 
@@ -153,6 +159,7 @@ impl FileWatcher {
             let file_event = FileChangeEvent {
                 change_type: change_type.to_string(),
                 paths: path_strings.clone(),
+                source_path_id: self.path_id.clone(),
             };
 
             if let Err(e) = self.app_handle.emit("files:changed", file_event) {

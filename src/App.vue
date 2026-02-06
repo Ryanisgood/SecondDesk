@@ -7,6 +7,7 @@ import { useFileStore } from './stores/files'
 import { useDrawerStore, DrawerState } from './stores/drawer'
 import { useBatchSelectStore } from './stores/batchSelect'
 import { useUpdaterStore } from './stores/updater'
+import { useWatchPathsStore } from './stores/watchPaths'
 import { GLASS_PRESETS, COLOR_THEMES, type GlassStyle } from './config/themes'
 import FileGrid from './components/FileGrid.vue'
 import DateTimeDisplay from './components/DateTimeDisplay.vue'
@@ -18,6 +19,7 @@ import MoveTargetPicker from './components/MoveTargetPicker.vue'
 import SearchBox from './components/SearchBox.vue'
 import UpdateNotification from './components/UpdateNotification.vue'
 import UpdateDialog from './components/UpdateDialog.vue'
+import PathSwitcher from './components/PathSwitcher.vue'
 import appLogoUrl from './assets/app-logo.png'
 import { getIconPath } from './utils/iconHelper'
 
@@ -29,6 +31,10 @@ const fileStore = useFileStore()
 const drawerStore = useDrawerStore()
 const batchStore = useBatchSelectStore()
 const updaterStore = useUpdaterStore()
+const watchPathsStore = useWatchPathsStore()
+
+// 是否有多个路径（控制 PathSwitcher 显示：2+ 条目时显示切换器）
+const hasMultiplePaths = computed(() => watchPathsStore.watchPaths.length > 1)
 const categoryTabsRef = ref<InstanceType<typeof CategoryTabs> | null>(null)
 const searchBoxRef = ref<InstanceType<typeof SearchBox> | null>(null)
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -100,7 +106,19 @@ async function runFilesRefresh(reason: string) {
     return
   }
   try {
-    await fileStore.loadFiles()
+    // 聚合视图需要重新加载所有文件夹
+    if (watchPathsStore.isAllView) {
+      const allPaths = buildAllViewPaths()
+      await fileStore.loadAllFoldersFiles(allPaths)
+    } else {
+      // 单文件夹视图：builtin 用 undefined（双桌面扫描），自定义用实际路径
+      const entry = watchPathsStore.watchPaths.find(wp => wp.id === watchPathsStore.activeViewId)
+      if (entry && !entry.builtin) {
+        await fileStore.loadFiles(entry.path)
+      } else {
+        await fileStore.loadFiles()
+      }
+    }
   } catch (error) {
     console.error(`刷新文件列表失败(${reason}):`, error)
   }
@@ -464,7 +482,11 @@ onMounted(async () => {
     })
   }
 
-  await fileStore.loadFiles()
+  // 加载监控路径配置
+  await watchPathsStore.loadWatchPaths()
+
+  // 按 activeViewId 初始化加载文件
+  await initLoadByActiveView()
 
   // 加载背景图片设置
   const savedBackground = localStorage.getItem('seconddesk_background')
@@ -740,8 +762,19 @@ function handleSearchBlur() {
   }
 }
 
-function handleRefresh() {
-  fileStore.loadFiles()
+async function handleRefresh() {
+  // 刷新时根据当前视图重新加载
+  if (watchPathsStore.isAllView) {
+    const allPaths = buildAllViewPaths()
+    await fileStore.loadAllFoldersFiles(allPaths)
+  } else {
+    const entry = watchPathsStore.watchPaths.find(wp => wp.id === watchPathsStore.activeViewId)
+    if (entry && !entry.builtin) {
+      await fileStore.loadFiles(entry.path)
+    } else {
+      await fileStore.loadFiles()
+    }
+  }
 }
 
 function toggleIconSize() {
@@ -799,9 +832,82 @@ function handleOpenCreateCategory() {
   batchStore.exitBatchSelect()
 }
 
-async function handleWatchPathChanged(path: string | null) {
-  // 切换监控文件夹后，加载新路径的文件
-  await fileStore.loadFiles(path ?? undefined)
+/** 构建聚合视图的路径列表（使用所有启用的路径） */
+function buildAllViewPaths(): { id: string; path: string }[] {
+  return watchPathsStore.enabledPaths.map(wp => ({ id: wp.id, path: wp.path }))
+}
+
+/** 初始化加载：按当前 activeViewId 加载文件 */
+async function initLoadByActiveView() {
+  const viewId = watchPathsStore.activeViewId
+  const { ALL_VIEW_ID } = watchPathsStore
+
+  if (viewId === ALL_VIEW_ID && watchPathsStore.enabledPaths.length > 1) {
+    // 聚合视图
+    const allPaths = buildAllViewPaths()
+    const watcherPaths = allPaths.map(p => p.path)
+    await watchPathsStore.switchWatcher(watcherPaths, ALL_VIEW_ID)
+    await fileStore.loadAllFoldersFiles(allPaths)
+  } else {
+    // 单文件夹视图（桌面或自定义路径）
+    const entry = watchPathsStore.watchPaths.find(wp => wp.id === viewId && wp.enabled)
+    if (entry) {
+      if (entry.builtin) {
+        // 桌面：用 null 触发双桌面扫描
+        await watchPathsStore.switchWatcher([entry.path], null)
+        await fileStore.loadFiles()
+      } else {
+        await watchPathsStore.switchWatcher([entry.path], entry.id)
+        await fileStore.loadFiles(entry.path)
+      }
+    } else {
+      // 路径不存在或被禁用，回退到第一个启用的路径
+      const firstEnabled = watchPathsStore.watchPaths.find(wp => wp.enabled)
+      if (firstEnabled) {
+        watchPathsStore.setActiveView(firstEnabled.id)
+        if (firstEnabled.builtin) {
+          await watchPathsStore.switchWatcher([firstEnabled.path], null)
+          await fileStore.loadFiles()
+        } else {
+          await watchPathsStore.switchWatcher([firstEnabled.path], firstEnabled.id)
+          await fileStore.loadFiles(firstEnabled.path)
+        }
+      } else {
+        await fileStore.loadFiles()
+      }
+    }
+  }
+}
+
+/** PathSwitcher 切换视图处理 */
+async function handlePathSwitched(pathId: string) {
+  const { ALL_VIEW_ID } = watchPathsStore
+  watchPathsStore.setActiveView(pathId)
+
+  if (pathId === ALL_VIEW_ID) {
+    const allPaths = buildAllViewPaths()
+    const watcherPaths = allPaths.map(p => p.path)
+    await watchPathsStore.switchWatcher(watcherPaths, ALL_VIEW_ID)
+    await fileStore.loadAllFoldersFiles(allPaths)
+  } else {
+    const entry = watchPathsStore.watchPaths.find(wp => wp.id === pathId)
+    if (entry) {
+      if (entry.builtin) {
+        // 桌面：用 null 触发双桌面扫描
+        await watchPathsStore.switchWatcher([entry.path], null)
+        await fileStore.loadFiles()
+      } else {
+        await watchPathsStore.switchWatcher([entry.path], entry.id)
+        await fileStore.loadFiles(entry.path)
+      }
+    }
+  }
+}
+
+async function handleWatchPathChanged(_path: string | null) {
+  // 设置面板更改监控路径后，重新加载
+  await watchPathsStore.loadWatchPaths()
+  await initLoadByActiveView()
 }
 
 function handleMouseMove() {
@@ -916,6 +1022,13 @@ async function saveWindowAdjustment() {
       <div class="header-left" data-tauri-drag-region>
         <img class="app-logo" :src="appLogoUrl" alt="Second Desk" data-tauri-drag-region />
         <DateTimeDisplay data-tauri-drag-region />
+
+        <!-- 路径切换器 -->
+        <PathSwitcher
+          v-if="hasMultiplePaths"
+          @path-changed="handlePathSwitched"
+          @open-settings="openSettings"
+        />
 
         <!-- 更新提醒 -->
         <UpdateNotification />

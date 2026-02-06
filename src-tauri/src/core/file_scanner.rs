@@ -76,6 +76,18 @@ impl FileScanner {
                 return Err("路径不是有效目录".into());
             }
 
+            // 4. 去除 \\?\ 前缀（Windows canonicalize 会添加此前缀，
+            //    但 Windows Shell API 如 SHGetFileInfo 不支持它，导致图标提取失败）
+            #[cfg(target_os = "windows")]
+            let canonical = {
+                let s = canonical.to_string_lossy();
+                if let Some(stripped) = s.strip_prefix("\\\\?\\") {
+                    PathBuf::from(stripped)
+                } else {
+                    canonical
+                }
+            };
+
             vec![canonical]
         } else {
             let mut roots = vec![self.desktop_path.clone()];
@@ -264,7 +276,7 @@ impl FileScanner {
             "url" | "website" | "appref-ms" => "shortcut",
             "txt" | "md" | "log" => "text",
             "doc" | "docx" => "word",
-            "xls" | "xlsx" => "excel",
+            "xls" | "xlsx" | "csv" => "excel",
             "ppt" | "pptx" => "powerpoint",
             "pdf" => "pdf",
             "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" => "image",

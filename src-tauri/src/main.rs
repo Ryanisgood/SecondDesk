@@ -14,6 +14,9 @@ use commands::file_ops::{
     get_known_folder, launch_application, move_file, new_file, open_file, open_url, remove_file,
     rename_file, restore_from_trash, show_file, show_file_properties, FileScannerState,
 };
+use commands::watch_paths::{
+    add_watch_path, get_watch_paths, remove_watch_path, set_watch_path_enabled, switch_watcher,
+};
 use commands::window_control::{
     get_auto_start, load_drawer_config, save_drawer_config, select_background_image, select_folder,
     set_auto_start, set_drawer_state, set_window_adjustable,
@@ -21,7 +24,7 @@ use commands::window_control::{
 use config::DrawerConfig;
 use core::edge_detector::EdgeDetector;
 use core::hotkey::HotkeyManager;
-use core::FileWatcher;
+use core::ActiveWatcher;
 
 #[tokio::main]
 async fn main() {
@@ -87,16 +90,23 @@ async fn main() {
                 edge_detector.start_monitoring().await;
             });
 
-            // 启动文件监控器
+            // 创建 ActiveWatcher 并注册到状态管理
+            let active_watcher = Arc::new(ActiveWatcher::new(
+                app.handle().clone(),
+                config.file_watcher.debounce_ms,
+            ));
+            app.manage(active_watcher.clone());
+
+            // 启动文件监控器：使用配置中第一个启用的路径
             if config.file_watcher.enabled {
                 use std::path::PathBuf;
 
-                // 获取监控路径
-                let watch_paths: Vec<PathBuf> =
-                    if let Some(custom_path) = &config.file_watcher.custom_path {
-                        vec![PathBuf::from(custom_path)]
-                    } else {
-                        // 使用桌面路径
+                // 查找第一个启用的路径
+                let first_enabled = config.file_watcher.watch_paths.iter().find(|wp| wp.enabled);
+
+                if let Some(entry) = first_enabled {
+                    let initial_paths: Vec<PathBuf> = if entry.builtin {
+                        // 桌面：扫描用户桌面 + 公共桌面
                         #[cfg(target_os = "windows")]
                         {
                             use crate::utils::known_folders;
@@ -115,19 +125,17 @@ async fn main() {
                         {
                             vec![]
                         }
+                    } else {
+                        vec![PathBuf::from(&entry.path)]
                     };
 
-                if !watch_paths.is_empty() {
-                    let file_watcher_handle = app.handle().clone();
-                    let file_watcher = Arc::new(FileWatcher::new(
-                        file_watcher_handle,
-                        watch_paths,
-                        config.file_watcher.debounce_ms,
-                    ));
-                    app.manage(file_watcher.clone());
-                    tokio::spawn(async move {
-                        file_watcher.start_monitoring().await;
-                    });
+                    if !initial_paths.is_empty() {
+                        let aw = active_watcher.clone();
+                        let path_id = if entry.builtin { None } else { Some(entry.id.clone()) };
+                        tokio::spawn(async move {
+                            aw.switch_to(initial_paths, path_id).await;
+                        });
+                    }
                 }
             }
 
@@ -158,6 +166,11 @@ async fn main() {
             select_background_image,
             set_auto_start,
             get_auto_start,
+            get_watch_paths,
+            add_watch_path,
+            remove_watch_path,
+            set_watch_path_enabled,
+            switch_watcher,
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用时出错");
