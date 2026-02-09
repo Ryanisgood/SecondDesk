@@ -95,6 +95,13 @@ let unlistenWindowAdjustStart: (() => void) | null = null
 let pendingFsRefresh = false
 let fsRefreshTimer: number | null = null
 
+// 事件监听器和定时器引用（用于清理）
+let handleContextMenu: ((e: Event) => void) | null = null
+let darkModeMediaQuery: MediaQueryList | null = null
+let handleColorSchemeChange: (() => void) | null = null
+let handleBackgroundChanged: EventListener | null = null
+let updateCheckInterval: number | null = null
+
 async function runFilesRefresh(reason: string) {
   pendingFsRefresh = false
   if (fsRefreshTimer !== null) {
@@ -237,14 +244,15 @@ function handleDocumentMouseUp() {
 
 onMounted(async () => {
   // 禁用浏览器默认右键菜单
-  document.addEventListener('contextmenu', (e) => {
+  handleContextMenu = (e) => {
     // 允许输入框使用右键菜单
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return
     }
-    e.preventDefault()
-  })
+    (e as MouseEvent).preventDefault()
+  }
+  document.addEventListener('contextmenu', handleContextMenu)
 
   // 加载抽屉配置
   await drawerStore.loadConfig()
@@ -477,9 +485,11 @@ onMounted(async () => {
 
   // 监听系统主题变化
   if (savedThemeMode === 'auto' && window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    handleColorSchemeChange = () => {
       applyFullTheme(savedThemeMode)
-    })
+    }
+    darkModeMediaQuery.addEventListener('change', handleColorSchemeChange)
   }
 
   // 加载监控路径配置
@@ -502,12 +512,13 @@ onMounted(async () => {
   }
 
   // 监听背景图片变化事件
-  window.addEventListener('background-changed', ((event: CustomEvent) => {
+  handleBackgroundChanged = ((event: CustomEvent) => {
     const { path, opacity, blur } = event.detail
     backgroundImagePath.value = path
     backgroundOpacity.value = opacity
     backgroundBlur.value = blur
-  }) as EventListener)
+  }) as EventListener
+  window.addEventListener('background-changed', handleBackgroundChanged)
 
   // 延迟 5 秒检查更新（避免影响启动性能）
   setTimeout(async () => {
@@ -517,7 +528,7 @@ onMounted(async () => {
   }, 5000)
 
   // 每 24 小时检查一次更新
-  setInterval(async () => {
+  updateCheckInterval = window.setInterval(async () => {
     await updaterStore.checkForUpdates(true)
   }, 24 * 60 * 60 * 1000)
 
@@ -533,6 +544,31 @@ onMounted(async () => {
 
 // 组件卸载时清理事件监听器
 onUnmounted(() => {
+  // 清理 contextmenu 监听器
+  if (handleContextMenu) {
+    document.removeEventListener('contextmenu', handleContextMenu)
+    handleContextMenu = null
+  }
+
+  // 清理 matchMedia 监听器
+  if (darkModeMediaQuery && handleColorSchemeChange) {
+    darkModeMediaQuery.removeEventListener('change', handleColorSchemeChange)
+    darkModeMediaQuery = null
+    handleColorSchemeChange = null
+  }
+
+  // 清理 background-changed 监听器
+  if (handleBackgroundChanged) {
+    window.removeEventListener('background-changed', handleBackgroundChanged)
+    handleBackgroundChanged = null
+  }
+
+  // 清理更新检查定时器
+  if (updateCheckInterval !== null) {
+    clearInterval(updateCheckInterval)
+    updateCheckInterval = null
+  }
+
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseleave', handleMouseLeave)
   document.removeEventListener('mouseenter', handleMouseEnter)

@@ -28,6 +28,7 @@ use core::ActiveWatcher;
 
 #[tokio::main]
 async fn main() {
+    let _ = rayon::ThreadPoolBuilder::new().build_global();
     // 初始化文件扫描器状态
     let scanner_state = match FileScannerState::new() {
         Ok(state) => state,
@@ -174,4 +175,7 @@ async fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用时出错");
+
+    // 注：应用退出时 tokio runtime drop 会终止所有 spawn 的任务
+    // EdgeDetector 的 CancellationToken + tokio::select! 确保 sleep 可被立即中断
 }

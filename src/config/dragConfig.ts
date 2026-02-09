@@ -14,7 +14,7 @@ export const DRAG_THRESHOLDS = {
   HOVER_TOLERANCE_PIXELS: 15,
 
   // 意图检测刷新间隔（毫秒）
-  INTENT_CHECK_INTERVAL_MS: 50,
+  INTENT_CHECK_INTERVAL_MS: 100,
 }
 
 // 拖拽数据类型标识

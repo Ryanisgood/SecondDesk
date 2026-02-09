@@ -27,9 +27,9 @@ export interface DragState {
   targetItem: DisplayItem | null
   targetRect: DOMRect | null
 
-  // 悬停计时
-  hoverStartTime: number | null
-  hoverPosition: { x: number; y: number } | null
+  // 悬停计时（已移至普通变量，不需响应式）
+  // hoverStartTime: number | null
+  // hoverPosition: { x: number; y: number } | null
 
   // 当前意图
   currentIntent: DragIntent

@@ -302,8 +302,8 @@ fn resize_and_save_icon(
 
     let (width, height) = (img.width(), img.height());
 
-    // 3. 确定目标尺寸（统一为 256x256 以保证质量）
-    const TARGET_SIZE: u32 = 256;
+    // 3. 确定目标尺寸（统一为 192x192 以保证质量）
+    const TARGET_SIZE: u32 = 192;
     let target_size = width.max(height).max(min_size).max(TARGET_SIZE);
 
     // 4. 调整为正方形尺寸
@@ -447,40 +447,33 @@ fn parse_url_file_icon(file_path: &Path) -> Option<PathBuf> {
     None
 }
 
+/// 获取缓存的环境变量（首次调用时初始化）
+#[cfg(target_os = "windows")]
+fn get_cached_env_vars() -> &'static Vec<(String, String)> {
+    static ENV_VARS: OnceLock<Vec<(String, String)>> = OnceLock::new();
+    ENV_VARS.get_or_init(|| {
+        use std::env;
+        vec![
+            ("%ProgramFiles(x86)%".to_string(), env::var("ProgramFiles(x86)").unwrap_or_else(|_| "C:\\Program Files (x86)".to_string())),
+            ("%ProgramFiles%".to_string(), env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string())),
+            ("%USERPROFILE%".to_string(), env::var("USERPROFILE").unwrap_or_default()),
+            ("%APPDATA%".to_string(), env::var("APPDATA").unwrap_or_default()),
+            ("%LOCALAPPDATA%".to_string(), env::var("LOCALAPPDATA").unwrap_or_default()),
+            ("%SystemRoot%".to_string(), env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string())),
+            ("%windir%".to_string(), env::var("windir").unwrap_or_else(|_| "C:\\Windows".to_string())),
+        ]
+    })
+}
+
 /// 展开环境变量
 #[cfg(target_os = "windows")]
 fn expand_env_vars(path: &str) -> String {
-    use std::env;
-
     let mut result = path.to_string();
-
-    // 先获取环境变量值，确保生命周期足够长
-    let programfiles = env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
-    let programfiles_x86 =
-        env::var("ProgramFiles(x86)").unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
-    let userprofile = env::var("USERPROFILE").unwrap_or_default();
-    let appdata = env::var("APPDATA").unwrap_or_default();
-    let localappdata = env::var("LOCALAPPDATA").unwrap_or_default();
-    let systemroot = env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
-    let windir = env::var("windir").unwrap_or_else(|_| "C:\\Windows".to_string());
-
-    // 常见环境变量替换
-    let replacements = vec![
-        ("%ProgramFiles(x86)%", programfiles_x86.as_str()),
-        ("%ProgramFiles%", programfiles.as_str()),
-        ("%USERPROFILE%", userprofile.as_str()),
-        ("%APPDATA%", appdata.as_str()),
-        ("%LOCALAPPDATA%", localappdata.as_str()),
-        ("%SystemRoot%", systemroot.as_str()),
-        ("%windir%", windir.as_str()),
-    ];
-
-    for (var, value) in replacements {
+    for (var, value) in get_cached_env_vars() {
         if !value.is_empty() {
             result = result.replace(var, value);
         }
     }
-
     result
 }
 

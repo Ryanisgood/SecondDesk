@@ -18,8 +18,8 @@ pub struct WatchPathEntry {
     pub builtin: bool,
 }
 
-/// 最大监控文件夹数量
-pub const MAX_WATCH_PATHS: usize = 3;
+/// 最大自定义监控文件夹数量（不含桌面）
+pub const MAX_CUSTOM_WATCH_PATHS: usize = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

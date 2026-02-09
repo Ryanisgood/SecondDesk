@@ -7,7 +7,7 @@ edition = "2021"
 
 [lib]
 name = "second_desk_lib"
-crate-type = ["staticlib", "cdylib", "lib"]
+crate-type = ["lib"]
 
 [[bin]]
 name = "second-desk"
@@ -25,12 +25,11 @@ tauri-plugin-updater = "2.0"
 tauri-plugin-process = "2.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-util = "0.7"  # CancellationToken 用于优雅退出
 rayon = "1.10"
-dashmap = "6.0"
 trash = "5.2"  # 跨平台回收站功能
 notify = "7"  # 文件系统监控
-notify-debouncer-mini = "0.5"  # 事件防抖
 auto-launch = "0.5"  # 开机自启动
 
 # Windows API
@@ -51,7 +50,7 @@ windows = { version = "0.62", features = [
 ] }
 lnk = "0.5"  # Windows 快捷方式解析
 getfileicon = "0.3"  # Windows 文件图标提取并保存为 PNG
-image = "0.25"  # 图像处理和缩放
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }  # 图像处理和缩放
 
 [profile.dev]
 incremental = true

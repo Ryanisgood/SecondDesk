@@ -21,8 +21,6 @@ function createInitialState(): DragState {
     targetType: null,
     targetItem: null,
     targetRect: null,
-    hoverStartTime: null,
-    hoverPosition: null,
     currentIntent: 'none',
     showInsertLine: false,
     insertLinePosition: null,
@@ -38,12 +36,18 @@ export function useDragDrop(options: DragDropOptions = {}) {
   const dialog = useDialog()
   const state = reactive<DragState>(createInitialState())
 
+  // 非渲染状态，不需要响应式追踪
+  let _hoverStartTime: number | null = null
+  let _hoverPosition: { x: number; y: number } | null = null
+
   // 意图检测定时器
   let intentCheckInterval: number | null = null
 
   // 重置状态
   function resetState() {
     Object.assign(state, createInitialState())
+    _hoverStartTime = null
+    _hoverPosition = null
     if (intentCheckInterval) {
       clearInterval(intentCheckInterval)
       intentCheckInterval = null
@@ -57,7 +61,7 @@ export function useDragDrop(options: DragDropOptions = {}) {
     }
 
     const now = Date.now()
-    const hoverDuration = state.hoverStartTime ? now - state.hoverStartTime : 0
+    const hoverDuration = _hoverStartTime ? now - _hoverStartTime : 0
 
     // 检查目标类型
     const targetIsRealFolder = state.targetType === 'folder'
@@ -177,19 +181,19 @@ export function useDragDrop(options: DragDropOptions = {}) {
       state.targetItem = targetItem
       state.targetType = detectTargetType(targetItem)
       state.targetRect = targetRect
-      state.hoverStartTime = Date.now()
-      state.hoverPosition = currentPos
+      _hoverStartTime = Date.now()
+      _hoverPosition = currentPos
     } else {
       // 检查是否移动超过容差
-      if (state.hoverPosition) {
-        const dx = currentPos.x - state.hoverPosition.x
-        const dy = currentPos.y - state.hoverPosition.y
+      if (_hoverPosition) {
+        const dx = currentPos.x - _hoverPosition.x
+        const dy = currentPos.y - _hoverPosition.y
         const distance = Math.sqrt(dx * dx + dy * dy)
 
         if (distance > DRAG_THRESHOLDS.HOVER_TOLERANCE_PIXELS) {
           // 移动过多，重置计时
-          state.hoverStartTime = Date.now()
-          state.hoverPosition = currentPos
+          _hoverStartTime = Date.now()
+          _hoverPosition = currentPos
         }
       }
     }
@@ -209,7 +213,7 @@ export function useDragDrop(options: DragDropOptions = {}) {
 
     state.targetItem = null
     state.targetType = 'gap'
-    state.hoverStartTime = null
+    _hoverStartTime = null
     state.showPlaceholder = false
     state.placeholderIndex = null
 
@@ -236,8 +240,8 @@ export function useDragDrop(options: DragDropOptions = {}) {
     state.targetType = null
     state.targetItem = null
     state.targetRect = null
-    state.hoverStartTime = null
-    state.hoverPosition = null
+    _hoverStartTime = null
+    _hoverPosition = null
 
     state.currentIntent = 'none'
     state.showInsertLine = false

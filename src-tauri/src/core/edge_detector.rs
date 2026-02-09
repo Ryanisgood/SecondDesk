@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::{
@@ -18,6 +19,7 @@ pub struct EdgeDetector {
     enabled: Arc<AtomicBool>,
     config: Arc<tokio::sync::RwLock<DrawerConfig>>,
     app_handle: AppHandle,
+    cancel_token: CancellationToken,
 }
 
 impl EdgeDetector {
@@ -26,6 +28,7 @@ impl EdgeDetector {
             enabled: Arc::new(AtomicBool::new(config.edge_trigger.enabled)),
             config: Arc::new(tokio::sync::RwLock::new(config)),
             app_handle,
+            cancel_token: CancellationToken::new(),
         }
     }
 
@@ -49,12 +52,26 @@ impl EdgeDetector {
             .store(config.edge_trigger.enabled, Ordering::Relaxed);
     }
 
+    /// 停止监控
+    #[allow(dead_code)]
+    pub fn shutdown(&self) {
+        self.cancel_token.cancel();
+    }
+
     /// 开始监控边缘
     pub async fn start_monitoring(self: Arc<Self>) {
+        let token = self.cancel_token.clone();
         loop {
+            // 检查取消信号
+            if token.is_cancelled() {
+                break;
+            }
             // 如果未启用，等待后继续
             if !self.enabled.load(Ordering::Relaxed) {
-                sleep(Duration::from_millis(100)).await;
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    _ = sleep(Duration::from_millis(100)) => {},
+                }
                 continue;
             }
 
@@ -63,7 +80,10 @@ impl EdgeDetector {
                 if let Ok(visible) = window.is_visible() {
                     if visible {
                         // 窗口显示时暂停边缘检测
-                        sleep(Duration::from_millis(100)).await;
+                        tokio::select! {
+                            _ = token.cancelled() => break,
+                            _ = sleep(Duration::from_millis(100)) => {},
+                        }
                         continue;
                     }
                 }
@@ -76,7 +96,10 @@ impl EdgeDetector {
             };
 
             if disable_in_fullscreen && self.is_fullscreen_app() {
-                sleep(Duration::from_millis(100)).await;
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    _ = sleep(Duration::from_millis(100)) => {},
+                }
                 continue;
             }
 
@@ -90,13 +113,16 @@ impl EdgeDetector {
                     drop(config); // 释放读锁
 
                     // 等待延迟时间
-                    sleep(Duration::from_millis(delay_ms)).await;
+                    tokio::select! {
+                        _ = token.cancelled() => break,
+                        _ = sleep(Duration::from_millis(delay_ms)) => {},
+                    }
 
                     // 再次检查是否仍在边缘
                     if let Some(pos2) = self.get_cursor_position() {
                         let config = self.config.read().await;
                         if self.is_at_edge(pos2, &config) {
-                            // 触发 OPEN 状态：优先后端直接显示窗口，避免前端 event loop 忙时边缘触发“失效”
+                            // 触发 OPEN 状态：优先后端直接显示窗口，避免前端 event loop 忙时边缘触发"失效"
                             if let Some(window) = self.app_handle.get_webview_window("main") {
                                 if let Ok(true) = window.is_minimized() {
                                     let _ = window.unminimize();
@@ -113,8 +139,11 @@ impl EdgeDetector {
                 }
             }
 
-            // 20 FPS 检测频率
-            sleep(Duration::from_millis(50)).await;
+            // 10 FPS 检测频率
+            tokio::select! {
+                _ = token.cancelled() => break,
+                _ = sleep(Duration::from_millis(100)) => {},
+            }
         }
     }
 

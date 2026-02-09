@@ -62,15 +62,16 @@ impl FileWatcher {
         let enabled = self.enabled.clone();
         let watch_paths = self.initial_paths.clone();
         let debounce_ms = self.debounce_ms;
+        let tx_clone = tx.clone();
 
         // 在独立线程中运行文件监控器
         std::thread::spawn(move || {
             // 创建 watcher
-            let tx_clone = tx.clone();
+            let tx_for_watcher = tx_clone.clone();
             let mut watcher = match RecommendedWatcher::new(
                 move |res: Result<Event, notify::Error>| {
                     if let Ok(event) = res {
-                        let _ = tx_clone.blocking_send(event);
+                        let _ = tx_for_watcher.blocking_send(event);
                     }
                 },
                 Config::default().with_poll_interval(Duration::from_millis(debounce_ms)),
@@ -102,6 +103,9 @@ impl FileWatcher {
                 }
             }
         });
+
+        // 立即 drop tx，防止内存泄漏
+        drop(tx);
 
         // 真正防抖：收集一段时间内的事件后只发一次，避免事件风暴占用运行时导致边缘检测等任务延迟
         let debounce_duration = Duration::from_millis(self.debounce_ms);
@@ -158,7 +162,7 @@ impl FileWatcher {
 
             let file_event = FileChangeEvent {
                 change_type: change_type.to_string(),
-                paths: path_strings.clone(),
+                paths: path_strings,
                 source_path_id: self.path_id.clone(),
             };
 

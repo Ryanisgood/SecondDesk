@@ -44,7 +44,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .build(app)?;
 
     // 保持托盘图标常驻（避免函数返回后被 drop）
-    std::mem::forget(tray);
+    Box::leak(Box::new(tray));
 
     Ok(())
 }

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef, triggerRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
@@ -575,28 +575,42 @@ function saveCategoryOrderToStorage(order: string[]) {
 }
 
 export const useFileStore = defineStore('files', () => {
+  // ==================== 通用 Debounce 函数 ====================
+  function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    return (...args: Parameters<T>) => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => fn(...args), delay)
+    }
+  }
+
+  // debounced 保存函数
+  const debouncedSaveFavorites = debounce(saveFavoritesMapToStorage, 500)
+  const debouncedSaveVirtualFolders = debounce(saveVirtualFoldersMapToStorage, 500)
+  const debouncedSaveIconOrder = debounce(saveIconOrderToStorage, 500)
+
   // 状态
-  const files = ref<FileItem[]>([])
-  const filteredFiles = ref<FileItem[]>([])
+  const files = shallowRef<FileItem[]>([])
+  const filteredFiles = shallowRef<FileItem[]>([])
   const currentPath = ref<string | null>(null)  // 改为 null 避免魔法字符串
   const loading = ref<boolean>(false)
   const loadingIcons = ref<boolean>(false)  // 图标加载状态
   const desktopPath = ref<string | null>(null)
   const lastDeletedPath = ref<string | null>(null)
-  const favoritesMap = ref<FavoritesMap>(loadFavoritesMapFromStorage())
+  const favoritesMap = shallowRef<FavoritesMap>(loadFavoritesMapFromStorage())
   const searchQuery = ref<string>('')
-  const iconOrderMap = ref<IconOrderMap>(loadIconOrderFromStorage())
+  const iconOrderMap = shallowRef<IconOrderMap>(loadIconOrderFromStorage())
   const sortModeMap = ref<Record<string, SortMode>>(loadSortModeFromStorage())
   const customCategories = ref<StoredCustomCategory[]>(loadCustomCategoriesFromStorage())
   const activeCategoryId = ref<string>(loadActiveCategoryFromStorage())
   const enabledPresetCategories = ref<Set<string>>(loadEnabledPresetCategoriesFromStorage())
   const categoryOrder = ref<string[]>(loadCategoryOrderFromStorage())
-  const virtualFoldersMap = ref<VirtualFoldersMap>(loadVirtualFoldersMapFromStorage())
+  const virtualFoldersMap = shallowRef<VirtualFoldersMap>(loadVirtualFoldersMapFromStorage())
 
   // 聚合视图：各文件夹文件缓存（key=pathKey）
-  const folderFilesCache = ref<Record<string, FileItem[]>>({})
+  const folderFilesCache = shallowRef<Record<string, FileItem[]>>({})
   // 聚合视图：重名文件显示名映射（key=filePath, value=带后缀的显示名）
-  const fileDisplayNameMap = ref<Map<string, string>>(new Map())
+  const fileDisplayNameMap = shallowRef<Map<string, string>>(new Map())
 
   // 当前路径的收藏集合（兼容旧代码）
   const favoritesSet = computed({
@@ -611,7 +625,7 @@ export const useFileStore = defineStore('files', () => {
         ...favoritesMap.value,
         [pathKey]: Array.from(newSet)
       }
-      saveFavoritesMapToStorage(favoritesMap.value)
+      debouncedSaveFavorites(favoritesMap.value)
     }
   })
 
@@ -627,7 +641,7 @@ export const useFileStore = defineStore('files', () => {
         ...virtualFoldersMap.value,
         [pathKey]: newFolders
       }
-      saveVirtualFoldersMapToStorage(virtualFoldersMap.value)
+      debouncedSaveVirtualFolders(virtualFoldersMap.value)
     }
   })
 
@@ -645,40 +659,6 @@ export const useFileStore = defineStore('files', () => {
     }
     return counts
   })
-  const autoCategories = computed<DesktopCategory[]>(() => {
-    const counts = fileTypeCounts.value
-    const result: DesktopCategory[] = []
-
-    for (const option of FILE_TYPE_OPTIONS) {
-      const count = counts[option.fType]
-      if (!count) continue
-
-      result.push({
-        id: `${AUTO_CATEGORY_PREFIX}${option.fType}`,
-        kind: 'auto',
-        name: option.name,
-        icon: option.icon,
-        fTypes: [option.fType],
-        count,
-      })
-    }
-
-    const known = new Set(FILE_TYPE_OPTIONS.map(o => o.fType))
-    for (const fType of Object.keys(counts).sort()) {
-      if (known.has(fType)) continue
-      result.push({
-        id: `${AUTO_CATEGORY_PREFIX}${fType}`,
-        kind: 'auto',
-        name: fType,
-        icon: '📦',
-        fTypes: [fType],
-        count: counts[fType],
-      })
-    }
-
-    return result
-  })
-  void autoCategories
   const categories = computed<DesktopCategory[]>(() => {
     const counts = fileTypeCounts.value
     const custom = customCategories.value.map<DesktopCategory>(cat => {
@@ -1059,10 +1039,16 @@ export const useFileStore = defineStore('files', () => {
         return folder
       }).filter(folder => folder.memberPaths.length > 0)
 
+      // 清理 folderFilesCache（非聚合视图）
+      if (normalizedPath !== ALL_PATHS_KEY) {
+        folderFilesCache.value = {}
+      }
+
       // 同步排序状态（包含虚拟分组）
       const nextOrderState = syncIconOrderState(iconOrderMap.value[pathKey], result, virtualFolders.value)
       iconOrderMap.value[pathKey] = nextOrderState
-      saveIconOrderToStorage(iconOrderMap.value)
+      triggerRef(iconOrderMap)
+      debouncedSaveIconOrder(iconOrderMap.value)
 
       const sortMode = sortModeMap.value[pathKey] ?? 'manual'
       files.value = applySortModeToList(sortFilesForDisplay(result, nextOrderState), sortMode)
@@ -1129,11 +1115,12 @@ export const useFileStore = defineStore('files', () => {
 
           // 更新图标
           icons.forEach(([filePath, ico]) => {
-            const file = files.value.find(f => f.filePath === filePath)
+            const file = fileByPath.value.get(filePath)
             if (file && ico) {
               file.ico = ico
             }
           })
+          triggerRef(files)
 
           // 小延迟，避免阻塞 UI
           if (i < batches.length - 1) {
@@ -1210,7 +1197,8 @@ export const useFileStore = defineStore('files', () => {
       const pathKey = ALL_PATHS_KEY
       const nextOrderState = syncIconOrderState(iconOrderMap.value[pathKey], allFiles, virtualFolders.value)
       iconOrderMap.value[pathKey] = nextOrderState
-      saveIconOrderToStorage(iconOrderMap.value)
+      triggerRef(iconOrderMap)
+      debouncedSaveIconOrder(iconOrderMap.value)
 
       const sortMode = sortModeMap.value[pathKey] ?? 'manual'
       files.value = applySortModeToList(sortFilesForDisplay(allFiles, nextOrderState), sortMode)
@@ -1267,7 +1255,7 @@ export const useFileStore = defineStore('files', () => {
   }
 
   function toggleFavorite(filePath: string) {
-    const file = files.value.find(f => f.filePath === filePath)
+    const file = fileByPath.value.get(filePath)
     if (file) {
       const pathKey = getPathKey(currentPath.value)
       const currentOrderState = iconOrderMap.value[pathKey] ?? syncIconOrderState(undefined, files.value, virtualFolders.value)
@@ -1286,6 +1274,7 @@ export const useFileStore = defineStore('files', () => {
 
       file.isFavorite = !file.isFavorite
       iconOrderMap.value[pathKey] = currentOrderState
+      triggerRef(iconOrderMap)
 
       // 聚合视图：收藏穿透写回源文件夹
       if (currentPath.value === ALL_PATHS_KEY) {
@@ -1302,7 +1291,7 @@ export const useFileStore = defineStore('files', () => {
             ...favoritesMap.value,
             [sourceKey]: Array.from(sourceFavSet)
           }
-          saveFavoritesMapToStorage(favoritesMap.value)
+          debouncedSaveFavorites(favoritesMap.value)
         }
       } else {
         // 单文件夹视图：原有逻辑
@@ -1316,7 +1305,7 @@ export const useFileStore = defineStore('files', () => {
       }
 
       // __all__ pathKey 的排序也要更新
-      saveIconOrderToStorage(iconOrderMap.value)
+      debouncedSaveIconOrder(iconOrderMap.value)
 
       const sortMode = getSortModeForCurrentPath()
       files.value = applySortModeToList(sortFilesForDisplay(files.value, currentOrderState), sortMode)
@@ -1332,9 +1321,9 @@ export const useFileStore = defineStore('files', () => {
   // 通用排序函数：支持文件路径和虚拟分组 ID
   function reorderItems(draggedId: string, targetId: string) {
     // 判断是文件还是虚拟分组
-    const draggedFile = files.value.find(f => f.filePath === draggedId)
+    const draggedFile = fileByPath.value.get(draggedId)
     const draggedVf = virtualFolders.value.find(vf => vf.id === draggedId)
-    const targetFile = files.value.find(f => f.filePath === targetId)
+    const targetFile = fileByPath.value.get(targetId)
     const targetVf = virtualFolders.value.find(vf => vf.id === targetId)
 
     // 至少要有一个拖拽项和一个目标项
@@ -1349,6 +1338,7 @@ export const useFileStore = defineStore('files', () => {
 
     let currentOrderState = iconOrderMap.value[pathKey] ?? syncIconOrderState(undefined, files.value, virtualFolders.value)
     iconOrderMap.value[pathKey] = currentOrderState
+    triggerRef(iconOrderMap)
 
     // 如果用户当前使用的是非 manual 排序（名称/类型），允许拖拽手动调整：
     // 1) 先把当前“屏幕上看到的顺序”固化成 iconOrderMap（避免跳回历史手动排序）
@@ -1429,6 +1419,7 @@ export const useFileStore = defineStore('files', () => {
       saveSortModeToStorage(sortModeMap.value)
     }
 
+    debouncedSaveIconOrder(iconOrderMap.value)
     files.value = applySortModeToList(sortFilesForDisplay(files.value, currentOrderState), 'manual')
     applyAllFilters()
   }
@@ -1436,7 +1427,7 @@ export const useFileStore = defineStore('files', () => {
   // 基于索引的排序（用于间隙插入）
   function reorderItemToIndex(draggedId: string, targetDisplayIndex: number) {
     // 判断是文件还是虚拟分组
-    const draggedFile = files.value.find(f => f.filePath === draggedId)
+    const draggedFile = fileByPath.value.get(draggedId)
     const draggedVf = virtualFolders.value.find(vf => vf.id === draggedId)
 
     if (!draggedFile && !draggedVf) return
@@ -1532,6 +1523,7 @@ export const useFileStore = defineStore('files', () => {
       saveSortModeToStorage(sortModeMap.value)
     }
 
+    debouncedSaveIconOrder(iconOrderMap.value)
     files.value = applySortModeToList(sortFilesForDisplay(files.value, currentOrderState), 'manual')
     applyAllFilters()
   }
@@ -1542,7 +1534,7 @@ export const useFileStore = defineStore('files', () => {
   }
 
   function persistIconOrder() {
-    saveIconOrderToStorage(iconOrderMap.value)
+    debouncedSaveIconOrder(iconOrderMap.value)
   }
 
   async function openFile(filePath: string) {
@@ -1632,6 +1624,20 @@ export const useFileStore = defineStore('files', () => {
 
   // ==================== 虚拟分组操作 ====================
 
+  // 文件路径索引 Map（O(1) 查找替代 O(n) 的 .find()）
+  const fileByPath = computed(() => new Map(files.value.map(f => [f.filePath, f])))
+
+  // 虚拟分组包含的文件路径集合（避免重复遍历）
+  const pathsInVirtualFolders = computed(() => {
+    const paths = new Set<string>()
+    for (const folder of virtualFolders.value) {
+      for (const path of folder.memberPaths) {
+        paths.add(path)
+      }
+    }
+    return paths
+  })
+
   // 计算属性：显示项目（文件 + 虚拟分组统一排序）
   const displayItems = computed<DisplayItem[]>(() => {
     const pathKey = getPathKey(currentPath.value)
@@ -1658,7 +1664,7 @@ export const useFileStore = defineStore('files', () => {
         const typeSet = new Set(presetCat?.fTypes ?? customCat?.fTypes ?? [])
         filteredVirtualFolders = filteredVirtualFolders.filter(vf =>
           vf.memberPaths.some(p => {
-            const file = files.value.find(f => f.filePath === p)
+            const file = fileByPath.value.get(p)
             return file && typeSet.has(file.fType)
           })
         )
@@ -1675,19 +1681,12 @@ export const useFileStore = defineStore('files', () => {
         }
         // 内部文件匹配
         return f.memberPaths.some(path => {
-          const file = files.value.find(file => file.filePath === path)
+          const file = fileByPath.value.get(path)
           return file && file.fileName.toLowerCase().includes(query)
         })
       })
     }
 
-    // 获取所有被虚拟分组包含的文件路径（这些文件不单独显示）
-    const pathsInVirtualFolders = new Set<string>()
-    for (const folder of virtualFolders.value) {
-      for (const path of folder.memberPaths) {
-        pathsInVirtualFolders.add(path)
-      }
-    }
 
     if (sortMode !== 'manual') {
       const items: DisplayItem[] = []
@@ -1697,7 +1696,7 @@ export const useFileStore = defineStore('files', () => {
       }
 
       for (const file of filteredFiles.value) {
-        if (!pathsInVirtualFolders.has(file.filePath)) {
+        if (!pathsInVirtualFolders.value.has(file.filePath)) {
           items.push({ type: 'file', data: file })
         }
       }
@@ -1740,7 +1739,7 @@ export const useFileStore = defineStore('files', () => {
 
     // 添加不在虚拟分组中的文件
     for (const file of filteredFiles.value) {
-      if (!pathsInVirtualFolders.has(file.filePath)) {
+      if (!pathsInVirtualFolders.value.has(file.filePath)) {
         itemMap.set(file.filePath, { type: 'file', data: file })
       }
     }
@@ -1780,7 +1779,7 @@ export const useFileStore = defineStore('files', () => {
 
   // 根据文件路径获取文件信息
   function getFileByPath(filePath: string): FileItem | undefined {
-    return files.value.find(f => f.filePath === filePath)
+    return fileByPath.value.get(filePath)
   }
 
   // 获取虚拟分组的成员文件
@@ -1790,7 +1789,7 @@ export const useFileStore = defineStore('files', () => {
 
     const members: FileItem[] = []
     for (const path of folder.memberPaths) {
-      const file = files.value.find(f => f.filePath === path)
+      const file = fileByPath.value.get(path)
       if (file) members.push(file)
     }
     return members
@@ -1863,7 +1862,7 @@ export const useFileStore = defineStore('files', () => {
     }
 
     iconOrderMap.value[pathKey] = nextOrderState
-    saveIconOrderToStorage(iconOrderMap.value)
+    debouncedSaveIconOrder(iconOrderMap.value)
 
     return newFolder
   }
@@ -1946,7 +1945,7 @@ export const useFileStore = defineStore('files', () => {
     if (orderState) {
       orderState.favorites = orderState.favorites.filter(id => id !== folderId)
       orderState.normals = orderState.normals.filter(id => id !== folderId)
-      saveIconOrderToStorage(iconOrderMap.value)
+      debouncedSaveIconOrder(iconOrderMap.value)
     }
 
     return true
@@ -2016,7 +2015,7 @@ export const useFileStore = defineStore('files', () => {
     }
 
     iconOrderMap.value[pathKey] = currentOrderState
-    saveIconOrderToStorage(iconOrderMap.value)
+    debouncedSaveIconOrder(iconOrderMap.value)
 
     const sortMode = getSortModeForCurrentPath()
     files.value = applySortModeToList(sortFilesForDisplay(files.value, currentOrderState), sortMode)
@@ -2079,8 +2078,10 @@ export const useFileStore = defineStore('files', () => {
   function clearFolderCache(pathKey: string) {
     // 删除图标排序
     if (iconOrderMap.value[pathKey]) {
-      delete iconOrderMap.value[pathKey]
-      saveIconOrderToStorage(iconOrderMap.value)
+      const next = { ...iconOrderMap.value }
+      delete next[pathKey]
+      iconOrderMap.value = next
+      debouncedSaveIconOrder(iconOrderMap.value)
     }
 
     // 删除排序模式
@@ -2091,14 +2092,18 @@ export const useFileStore = defineStore('files', () => {
 
     // 删除虚拟分组
     if (virtualFoldersMap.value[pathKey]) {
-      delete virtualFoldersMap.value[pathKey]
-      saveVirtualFoldersMapToStorage(virtualFoldersMap.value)
+      const next = { ...virtualFoldersMap.value }
+      delete next[pathKey]
+      virtualFoldersMap.value = next
+      debouncedSaveVirtualFolders(virtualFoldersMap.value)
     }
 
     // 删除收藏
     if (favoritesMap.value[pathKey]) {
-      delete favoritesMap.value[pathKey]
-      saveFavoritesMapToStorage(favoritesMap.value)
+      const next = { ...favoritesMap.value }
+      delete next[pathKey]
+      favoritesMap.value = next
+      debouncedSaveFavorites(favoritesMap.value)
     }
 
     // 如果清除的是当前路径，重新应用过滤

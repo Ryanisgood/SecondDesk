@@ -25,4 +25,10 @@ export default defineConfig({
       ignored: ['**/src-tauri/**'],
     },
   },
+  build: {
+    target: 'es2020',
+    cssCodeSplit: false,
+    chunkSizeWarningLimit: 500,
+    reportCompressedSize: false,
+  },
 })

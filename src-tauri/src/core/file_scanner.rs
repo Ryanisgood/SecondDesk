@@ -190,7 +190,7 @@ impl FileScanner {
     ) -> Result<Vec<FileItem>, Box<dyn std::error::Error + Send + Sync>> {
         use std::collections::HashSet;
 
-        let mut all: Vec<FileItem> = Vec::new();
+        let mut all: Vec<FileItem> = Vec::with_capacity(200);
         for p in paths {
             if !p.exists() {
                 continue;
@@ -206,11 +206,7 @@ impl FileScanner {
         let mut seen = HashSet::<String>::new();
         all.retain(|item| seen.insert(item.file_path.clone()));
 
-        all.sort_by(|a, b| {
-            let an = a.file_name.to_lowercase();
-            let bn = b.file_name.to_lowercase();
-            an.cmp(&bn).then_with(|| a.file_path.cmp(&b.file_path))
-        });
+        all.sort_by_cached_key(|item| (item.file_name.to_lowercase(), item.file_path.clone()));
 
         Ok(all)
     }
@@ -236,7 +232,7 @@ impl FileScanner {
                 .unwrap_or("")
                 .to_lowercase();
 
-            let f_type = Self::classify_file_type(&ext);
+            let f_type = Self::classify_file_type(&ext).to_string();
             (ext, f_type)
         };
 
@@ -269,7 +265,7 @@ impl FileScanner {
     }
 
     /// 分类文件类型
-    fn classify_file_type(ext: &str) -> String {
+    fn classify_file_type(ext: &str) -> &'static str {
         match ext {
             "exe" | "msi" => "exe",
             "lnk" => "shortcut",
@@ -288,7 +284,6 @@ impl FileScanner {
             "json" | "xml" | "yaml" | "toml" | "ini" => "config",
             _ => "file",
         }
-        .to_string()
     }
 }
 

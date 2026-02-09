@@ -9,6 +9,7 @@ use super::file_watcher::FileWatcher;
 /// 切换视图时停止旧 watcher、创建新 watcher。
 pub struct ActiveWatcher {
     current: RwLock<Option<Arc<FileWatcher>>>,
+    current_task: RwLock<Option<tokio::task::JoinHandle<()>>>,
     app_handle: AppHandle,
     debounce_ms: u64,
 }
@@ -18,6 +19,7 @@ impl ActiveWatcher {
     pub fn new(app_handle: AppHandle, debounce_ms: u64) -> Self {
         Self {
             current: RwLock::new(None),
+            current_task: RwLock::new(None),
             app_handle,
             debounce_ms,
         }
@@ -29,6 +31,12 @@ impl ActiveWatcher {
         let old = self.current.write().await.take();
         if let Some(old) = old {
             old.disable();
+        }
+
+        // abort 旧的监控任务
+        let mut task = self.current_task.write().await;
+        if let Some(handle) = task.take() {
+            handle.abort();
         }
 
         if paths.is_empty() {
@@ -44,10 +52,12 @@ impl ActiveWatcher {
         ));
 
         let watcher_clone = new_watcher.clone();
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             watcher_clone.start_monitoring().await;
         });
 
+        *task = Some(handle);
+        drop(task);
         *self.current.write().await = Some(new_watcher);
     }
 
@@ -57,6 +67,11 @@ impl ActiveWatcher {
         let old = self.current.write().await.take();
         if let Some(old) = old {
             old.disable();
+        }
+
+        let mut task = self.current_task.write().await;
+        if let Some(handle) = task.take() {
+            handle.abort();
         }
     }
 }

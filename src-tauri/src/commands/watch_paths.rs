@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{command, AppHandle, Manager, State};
 
-use crate::config::{DrawerConfig, WatchPathEntry, MAX_WATCH_PATHS};
+use crate::config::{DrawerConfig, WatchPathEntry, MAX_CUSTOM_WATCH_PATHS};
 use crate::core::ActiveWatcher;
 
 /// 获取配置文件路径（复用 window_control 的逻辑）
@@ -48,9 +48,10 @@ pub async fn add_watch_path(
     let config_path = get_config_path(&app)?;
     let mut config = DrawerConfig::load(&config_path)?;
 
-    // 检查数量上限
-    if config.file_watcher.watch_paths.len() >= MAX_WATCH_PATHS {
-        return Err(format!("最多只能监控 {} 个文件夹", MAX_WATCH_PATHS));
+    // 检查自定义路径数量上限（不含桌面等内置路径）
+    let custom_count = config.file_watcher.watch_paths.iter().filter(|wp| !wp.builtin).count();
+    if custom_count >= MAX_CUSTOM_WATCH_PATHS {
+        return Err(format!("最多只能添加 {} 个自定义文件夹", MAX_CUSTOM_WATCH_PATHS));
     }
 
     // 检查重复

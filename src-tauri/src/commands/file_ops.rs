@@ -3,7 +3,6 @@ use crate::core::{file_scanner::FileScanner, FileItem};
 use crate::utils::known_folders;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 /// 路径验证辅助函数 - 确保路径有效且安全
 fn validate_path(path: &Path) -> Result<PathBuf, String> {
@@ -50,14 +49,14 @@ fn validate_path_allow_missing(path: &Path) -> Result<PathBuf, String> {
 
 /// 全局文件扫描器
 pub struct FileScannerState {
-    scanner: Arc<Mutex<FileScanner>>,
+    scanner: Arc<FileScanner>,
 }
 
 impl FileScannerState {
     pub fn new() -> Result<Self, String> {
         let scanner = FileScanner::new().map_err(|e| format!("无法初始化文件扫描器: {}", e))?;
         Ok(Self {
-            scanner: Arc::new(Mutex::new(scanner)),
+            scanner: Arc::new(scanner),
         })
     }
 }
@@ -68,9 +67,8 @@ pub async fn get_file_info(
     path: Option<String>,
     state: tauri::State<'_, FileScannerState>,
 ) -> Result<Vec<FileItem>, String> {
-    let scanner = state.scanner.lock().await;
-
-    scanner
+    state
+        .scanner
         .scan_directory(path.as_deref())
         .await
         .map_err(|e| format!("扫描目录失败: {}", e))
@@ -89,9 +87,8 @@ pub async fn extract_file_icons(
     file_paths: Vec<String>,
     state: tauri::State<'_, FileScannerState>,
 ) -> Result<Vec<(String, String)>, String> {
-    let scanner = state.scanner.lock().await;
-
-    scanner
+    state
+        .scanner
         .extract_icons(file_paths)
         .await
         .map_err(|e| format!("提取图标失败: {}", e))
