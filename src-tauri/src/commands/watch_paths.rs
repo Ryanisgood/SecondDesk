@@ -49,13 +49,26 @@ pub async fn add_watch_path(
     let mut config = DrawerConfig::load(&config_path)?;
 
     // 检查自定义路径数量上限（不含桌面等内置路径）
-    let custom_count = config.file_watcher.watch_paths.iter().filter(|wp| !wp.builtin).count();
+    let custom_count = config
+        .file_watcher
+        .watch_paths
+        .iter()
+        .filter(|wp| !wp.builtin)
+        .count();
     if custom_count >= MAX_CUSTOM_WATCH_PATHS {
-        return Err(format!("最多只能添加 {} 个自定义文件夹", MAX_CUSTOM_WATCH_PATHS));
+        return Err(format!(
+            "最多只能添加 {} 个自定义文件夹",
+            MAX_CUSTOM_WATCH_PATHS
+        ));
     }
 
     // 检查重复
-    if config.file_watcher.watch_paths.iter().any(|wp| wp.path == path) {
+    if config
+        .file_watcher
+        .watch_paths
+        .iter()
+        .any(|wp| wp.path == path)
+    {
         return Err(format!("路径已存在: {}", path));
     }
 
@@ -86,12 +99,20 @@ pub async fn remove_watch_path(app: AppHandle, path_id: String) -> Result<(), St
     let mut config = DrawerConfig::load(&config_path)?;
 
     // 内置路径不可删除
-    if config.file_watcher.watch_paths.iter().any(|wp| wp.id == path_id && wp.builtin) {
+    if config
+        .file_watcher
+        .watch_paths
+        .iter()
+        .any(|wp| wp.id == path_id && wp.builtin)
+    {
         return Err("内置路径不可删除".to_string());
     }
 
     let before = config.file_watcher.watch_paths.len();
-    config.file_watcher.watch_paths.retain(|wp| wp.id != path_id);
+    config
+        .file_watcher
+        .watch_paths
+        .retain(|wp| wp.id != path_id);
 
     if config.file_watcher.watch_paths.len() == before {
         return Err(format!("未找到路径: {}", path_id));
@@ -113,7 +134,10 @@ pub async fn set_watch_path_enabled(
 
     // 禁用时检查：至少保留一个启用的路径
     if !enabled {
-        let enabled_count = config.file_watcher.watch_paths.iter()
+        let enabled_count = config
+            .file_watcher
+            .watch_paths
+            .iter()
             .filter(|wp| wp.enabled && wp.id != path_id)
             .count();
         if enabled_count == 0 {

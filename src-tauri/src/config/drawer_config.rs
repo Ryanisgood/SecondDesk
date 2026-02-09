@@ -176,19 +176,27 @@ impl DrawerConfig {
         let json = std::fs::read_to_string(config_path)
             .map_err(|e| format!("Failed to read config file: {}", e))?;
 
-        let mut config: Self =
-            serde_json::from_str(&json).map_err(|e| format!("Failed to parse config file: {}", e))?;
+        let mut config: Self = serde_json::from_str(&json)
+            .map_err(|e| format!("Failed to parse config file: {}", e))?;
 
         let mut changed = false;
 
         // 迁移：将旧 custom_path 转换为 watch_paths 条目
         if let Some(ref custom_path) = config.file_watcher.custom_path {
-            if !config.file_watcher.watch_paths.iter().any(|wp| wp.path == *custom_path) {
+            if !config
+                .file_watcher
+                .watch_paths
+                .iter()
+                .any(|wp| wp.path == *custom_path)
+            {
                 let entry = WatchPathEntry {
-                    id: format!("wp_{}", std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_millis()),
+                    id: format!(
+                        "wp_{}",
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis()
+                    ),
                     path: custom_path.clone(),
                     enabled: true,
                     label: None,

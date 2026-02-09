@@ -132,7 +132,11 @@ async fn main() {
 
                     if !initial_paths.is_empty() {
                         let aw = active_watcher.clone();
-                        let path_id = if entry.builtin { None } else { Some(entry.id.clone()) };
+                        let path_id = if entry.builtin {
+                            None
+                        } else {
+                            Some(entry.id.clone())
+                        };
                         tokio::spawn(async move {
                             aw.switch_to(initial_paths, path_id).await;
                         });

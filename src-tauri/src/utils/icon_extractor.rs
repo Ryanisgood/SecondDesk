@@ -454,13 +454,35 @@ fn get_cached_env_vars() -> &'static Vec<(String, String)> {
     ENV_VARS.get_or_init(|| {
         use std::env;
         vec![
-            ("%ProgramFiles(x86)%".to_string(), env::var("ProgramFiles(x86)").unwrap_or_else(|_| "C:\\Program Files (x86)".to_string())),
-            ("%ProgramFiles%".to_string(), env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string())),
-            ("%USERPROFILE%".to_string(), env::var("USERPROFILE").unwrap_or_default()),
-            ("%APPDATA%".to_string(), env::var("APPDATA").unwrap_or_default()),
-            ("%LOCALAPPDATA%".to_string(), env::var("LOCALAPPDATA").unwrap_or_default()),
-            ("%SystemRoot%".to_string(), env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string())),
-            ("%windir%".to_string(), env::var("windir").unwrap_or_else(|_| "C:\\Windows".to_string())),
+            (
+                "%ProgramFiles(x86)%".to_string(),
+                env::var("ProgramFiles(x86)")
+                    .unwrap_or_else(|_| "C:\\Program Files (x86)".to_string()),
+            ),
+            (
+                "%ProgramFiles%".to_string(),
+                env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string()),
+            ),
+            (
+                "%USERPROFILE%".to_string(),
+                env::var("USERPROFILE").unwrap_or_default(),
+            ),
+            (
+                "%APPDATA%".to_string(),
+                env::var("APPDATA").unwrap_or_default(),
+            ),
+            (
+                "%LOCALAPPDATA%".to_string(),
+                env::var("LOCALAPPDATA").unwrap_or_default(),
+            ),
+            (
+                "%SystemRoot%".to_string(),
+                env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string()),
+            ),
+            (
+                "%windir%".to_string(),
+                env::var("windir").unwrap_or_else(|_| "C:\\Windows".to_string()),
+            ),
         ]
     })
 }

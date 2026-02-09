@@ -34,7 +34,12 @@ pub struct FileWatcher {
 
 impl FileWatcher {
     /// 创建新的文件监控器
-    pub fn new(app_handle: AppHandle, watch_paths: Vec<PathBuf>, debounce_ms: u64, path_id: Option<String>) -> Self {
+    pub fn new(
+        app_handle: AppHandle,
+        watch_paths: Vec<PathBuf>,
+        debounce_ms: u64,
+        path_id: Option<String>,
+    ) -> Self {
         Self {
             enabled: Arc::new(AtomicBool::new(true)),
             app_handle,
