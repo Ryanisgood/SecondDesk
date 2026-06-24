@@ -1,437 +1,100 @@
-# Second Desk
+# Second Desk / 第二桌面
 
-> 基于 Rust + Tauri 的高性能桌面文件管理工具 - 轻量、优雅、高效
+Second Desk is a lightweight Windows file drawer built with Tauri, Rust, Vue 3, and TypeScript. It keeps frequently used files, folders, shortcuts, and virtual groups one edge gesture or hotkey away without filling the desktop with icons.
 
-## 项目简介
+第二桌面是一款基于 Tauri、Rust、Vue 3 和 TypeScript 构建的轻量级 Windows 桌面文件抽屉。它可以把常用文件、文件夹、快捷方式和虚拟分组收纳到屏幕边缘，通过边缘触发或快捷键快速呼出，让桌面保持简洁。
 
-Second Desk 是一款现代化的 Windows 桌面文件管理工具，采用 **Rust + Tauri 2.x + Vue 3** 技术栈构建。它以**抽屉式**设计理念，通过屏幕边缘触发或全局快捷键快速呼出，让桌面文件访问变得触手可及。
+## Highlights / 核心亮点
 
+- Edge-triggered drawer that appears from the side of the screen and hides when it is no longer needed.
+- 屏幕边缘触发的抽屉面板，用时呼出，用完隐藏，不长期占用桌面空间。
+- Virtual folders for grouping files across locations without moving the original files.
+- 虚拟文件夹可跨目录组织文件，不移动原始文件位置。
+- Fast search and command input for files, paths, websites, and common Windows tools.
+- 支持文件、路径、网站和常用 Windows 工具的快速搜索与命令输入。
+- Custom categories, favorites, grid/list views, icon sizing, themes, blur intensity, and window behavior.
+- 支持自定义分类、收藏、网格/列表视图、图标尺寸、主题、毛玻璃强度和窗口行为配置。
+- Native Windows packaging with signed updater artifacts generated through GitHub Releases.
+- 通过 GitHub Releases 生成 Windows 安装包和带签名的自动更新产物。
 
-与传统的桌面图标管理不同，Second Desk 将常用文件收纳在一个可随时呼出的抽屉面板中，既保持了桌面的整洁，又不牺牲文件访问的便捷性。无论是快速启动应用、打开文档，还是管理下载文件，只需将鼠标移到屏幕边缘或按下快捷键，即可在 1 秒内完成操作。
+## Requirements / 环境要求
 
-### 为什么选择 Second Desk？
-
-- **桌面整洁** - 将常用文件收纳到抽屉中，告别杂乱的桌面图标
-- **随用随现** - 边缘触发或快捷键呼出，用完自动隐藏，不占屏幕空间
-- **智能分类** - 自动识别文件类型，支持自定义分类和虚拟文件夹
-- **高度定制** - 从触发方式到主题配色，一切都可按需调整
-- **性能至上** - Rust 后端保证极致性能，冷启动不到 1 秒
-
-### 核心亮点
-
-| 特性 | 说明 |
-|------|------|
-| 🚀 极速启动 | 冷启动 <1 秒，文件扫描 <100ms |
-| 🪟 智能触发 | 支持 4 个方向的边缘触发 + 全局快捷键 |
-| 🎨 精美主题 | 5 种配色 × 深浅色模式 × 毛玻璃效果 |
-| 📁 虚拟分组 | 像 iPhone 一样拖拽图标创建文件夹 |
-| ✅ 批量操作 | 长按进入批量选择模式，快速移动多个文件 |
-| 🔧 完全可调 | 窗口位置、大小、触发延迟、自动隐藏全可配 |
-| 💾 轻量高效 | 内存占用 <120MB，二进制体积 <50MB |
-| 🛡️ 智能保护 | 全屏检测、快捷键保护期、拖动检测 |
-
----
-
-## 使用说明
-
-### 基本操作
-
-#### 呼出与隐藏
-
-| 操作 | 说明 |
-|------|------|
-| **边缘触发** | 将鼠标移动到屏幕边缘（默认右侧），停留片刻即可呼出 |
-| **快捷键呼出** | 按下 `Ctrl+Shift+D`（可自定义）快速呼出/隐藏 |
-| **自动隐藏** | 鼠标移出窗口或窗口失焦时自动隐藏（可选择模式） |
-| **托盘图标** | 右键托盘图标可快速访问设置或退出程序 |
-
-#### 文件操作
-
-| 操作 | 说明 |
-|------|------|
-| **单击** | 打开文件或应用程序 |
-| **右键** | 打开上下文菜单（打开、重命名、删除、属性等） |
-| **拖拽** | 拖动文件调整顺序，或拖入虚拟文件夹/分类 |
-| **收藏** | 点击文件右上角的星标，将文件添加到收藏 |
-| **搜索** | 在顶部搜索框输入关键词，实时过滤文件 |
-
-### 分类系统
-
-Second Desk 提供灵活的分类管理系统，帮助你组织文件：
-
-#### 预设分类
-
-- **全部** - 显示当前路径下的所有文件
-- **收藏** - 显示所有已收藏的文件和虚拟文件夹
-- **应用** - 自动识别 `.exe`、`.lnk`、`.url` 等可执行文件
-- **文档** - 自动识别 `.doc`、`.pdf`、`.txt` 等文档文件
-- **媒体** - 自动识别图片、视频、音频等媒体文件
-- **其他** - 不属于以上类型的文件
-
-#### 自定义分类
-
-1. 点击分类栏右侧的 **+** 按钮
-2. 输入分类名称，选择图标
-3. 勾选要添加到该分类的文件
-4. 点击确认创建
-
-自定义分类支持：
-- 拖拽排序
-- 重命名和编辑
-- 右键删除
-
-### 虚拟文件夹
-
-虚拟文件夹类似于 iPhone 的文件夹功能，可以将多个文件聚合在一起，但不会真正移动文件位置。
-
-#### 创建虚拟文件夹
-
-**方式一：拖拽合并**
-1. 拖动一个文件图标
-2. 将其悬停在另一个文件上方（会显示合并预览）
-3. 松开鼠标，自动创建包含两个文件的虚拟文件夹
-
-**方式二：批量选择创建**
-1. 长按任意文件 500ms 进入批量选择模式
-2. 点击选择多个文件
-3. 点击底部操作栏的「创建文件夹」
-
-#### 管理虚拟文件夹
-
-- **打开** - 单击虚拟文件夹，弹出成员列表
-- **添加成员** - 拖动文件到虚拟文件夹图标上
-- **移除成员** - 在弹出列表中右键点击成员，选择「移出文件夹」
-- **重命名** - 右键虚拟文件夹，选择「重命名」
-- **删除** - 右键虚拟文件夹，选择「删除」（不会删除实际文件）
-- **收藏** - 点击虚拟文件夹的星标图标
-
-### 批量选择模式
-
-批量选择模式让你可以一次性操作多个文件，比逐个拖动更高效。
-
-#### 进入批量选择模式
-
-- **长按触发** - 按住任意文件图标不动 500ms，自动进入批量选择模式
-
-#### 批量操作
-
-进入批量选择模式后，底部会出现操作栏：
-
-| 按钮 | 功能 |
-|------|------|
-| **全选** | 选择当前显示的所有文件 |
-| **移动到...** | 将选中项添加到分类或虚拟文件夹 |
-| **创建分类** | 用选中的文件创建新分类 |
-| **创建文件夹** | 用选中的文件创建虚拟文件夹（需选择 ≥2 项） |
-| **取消** | 退出批量选择模式 |
-
-#### 移动到目标
-
-点击「移动到...」后，会弹出目标选择器：
-
-- **分类标签页** - 显示所有自定义分类，点击即可添加
-- **虚拟文件夹标签页** - 显示当前路径下的虚拟文件夹
-
-### 视图切换
-
-#### 显示模式
-
-- **网格视图** - 以图标网格显示文件（默认）
-- **列表视图** - 以紧凑列表显示文件
-
-#### 图标大小
-
-- **小** - 适合文件较多时使用
-- **中** - 默认大小，平衡显示效果
-- **大** - 适合触屏或需要大图标时使用
-
-### 主题与外观
-
-#### 配色方案
-
-提供 5 种预设配色：
-- 🔵 **蓝色** - 经典稳重
-- 🟢 **绿色** - 清新自然
-- 🟣 **紫色** - 优雅神秘
-- 🟠 **琥珀** - 温暖活力
-- 🩷 **粉色** - 柔和可爱
-
-#### 颜色模式
-
-- **浅色模式** - 明亮背景，适合日间使用
-- **深色模式** - 暗色背景，减少眼睛疲劳
-- **跟随系统** - 自动匹配系统主题
-
-#### 毛玻璃效果
-
-- **标准** - 适中的模糊和透明度
-- **淡雅** - 轻微模糊，更加通透
-- **强化** - 强模糊效果，更具质感
-- **极简** - 几乎透明，低调隐蔽
-- **自定义** - 手动调节模糊度、饱和度、透明度
-
-#### 自定义背景
-
-支持设置自定义图片作为窗口背景，让界面更加个性化。
-
-### 窗口设置
-
-#### 边缘触发
-
-- **触发方向** - 选择屏幕的上/下/左/右边缘
-- **触发延迟** - 鼠标停留多久后触发（100-1000ms）
-- **触发区域** - 边缘触发的敏感区域大小
-
-#### 自动隐藏
-
-- **鼠标离开隐藏** - 鼠标移出窗口后自动隐藏
-- **窗口失焦隐藏** - 点击其他窗口后自动隐藏
-- **隐藏延迟** - 触发隐藏前的等待时间
-
-#### 窗口调整
-
-- **调整模式** - 点击进入调整模式，可拖动调整窗口位置和大小
-- **动画速度** - 窗口显示/隐藏的动画时长（100-500ms）
-
-### 快捷键
-
-| 快捷键 | 功能 |
-|--------|------|
-| `Ctrl+Shift+D` | 呼出/隐藏窗口（可自定义） |
-| `Esc` | 退出批量选择模式 / 关闭弹窗 |
-| `Ctrl+F` | 聚焦搜索框 |
-| `Enter` | 执行搜索或选中的建议 |
-| `↑` / `↓` | 导航建议列表 |
-| `Tab` | 自动补全选中的建议 |
-
-快捷键支持自定义：在设置面板中点击快捷键输入框，按下新的组合键即可录制。
-
-### 智能搜索功能
-
-顶部搜索框不仅支持文件搜索，还集成了强大的多模式智能搜索功能：
-
-#### 🔍 文件搜索模式（默认）
-
-直接输入文件名进行搜索：
-```
-项目报告.docx      # 搜索文件名包含关键词的文件
-.pdf               # 搜索所有 PDF 文件
-```
-
-#### ⚡ 命令执行模式
-
-**系统应用**（输入 `>` 前缀或直接输入命令）：
-```
->calc              # 打开计算器
->notepad           # 打开记事本
-cmd                # 打开命令提示符（无需前缀）
-ps                 # 打开 PowerShell（无需前缀）
-ps+参数            # 打开 PowerShell 并执行命令
-cmd+参数           # 打开命令提示符并执行命令
-```
-
-支持的系统命令：`calc`（计算器）、`notepad`（记事本）、`explorer`（资源管理器）、`taskmgr`（任务管理器）、`mspaint`（画图）、`control`（控制面板）、`regedit`（注册表）、`msconfig`（系统配置）
-
-**网页搜索**（无需前缀，直接输入）：
-```
-bd                 # 打开百度首页
-bd 编程教程        # 用百度搜索"编程教程"
-gg React           # 用 Google 搜索"React"
-bing AI            # 用 Bing 搜索"AI"
-```
-
-#### 🌐 导航模式
-
-**打开网页**（自动识别 URL）：
-```
-https://github.com # 完整 URL
-www.google.com     # www 前缀
-github.com         # 域名
-localhost:3000     # 本地服务
-```
-
-**快速跳转系统文件夹**（支持中英文）：
-```
-下载 / downloads   # 在资源管理器中打开下载文件夹
-文档 / documents   # 在资源管理器中打开文档文件夹
-桌面 / desktop     # 在资源管理器中打开桌面
-图片 / pictures    # 在资源管理器中打开图片文件夹
-音乐 / music       # 在资源管理器中打开音乐文件夹
-视频 / videos      # 在资源管理器中打开视频文件夹
-```
-
-**打开任意路径**：
-```
-C:\Windows         # 在资源管理器中打开 Windows 目录
-D:\Projects        # 打开其他盘符路径
-```
-
-
-#### 💡 使用技巧
-
-- 搜索框会自动识别输入类型，并在左侧显示对应图标：
-  - 🔍 搜索模式（默认）
-  - ⚡ 命令模式（蓝色）
-  - 🌐 导航模式（绿色）
-- 输入时会实时显示智能建议，按 `↑` `↓` 键选择，`Enter` 执行
-- 搜索引擎命令会显示动态提示：无参数显示"打开首页"，有参数显示"搜索：关键词"
-- 所有操作都会自动记录到历史记录，方便快速重复执行
-
----
-
-## 技术栈
-
-### 后端（Rust）
-- **Tauri 2.x** - 跨平台桌面应用框架
-- **tokio** - 异步运行时
-- **rayon** - 数据并行处理
-- **windows-rs** - Windows API 绑定
-- **dashmap** - 并发哈希表
-
-### 前端（Web）
-- **Vue 3 + TypeScript** - 响应式 UI 框架
-- **Vite** - 快速构建工具
-- **Pinia** - 状态管理
-- **VueUse** - 组合式工具库
-
----
-
-## 快速开始
-
-### 环境要求
-
+- Windows 10 or Windows 11 / Windows 10 或 Windows 11
 - Node.js 18+
 - Bun 1.0+
-- Rust 1.70+
-- Windows 10/11
+- Rust stable / Rust 稳定版
 
-### 安装依赖
+## Development / 开发
+
+Install dependencies / 安装依赖：
 
 ```bash
-# 安装前端依赖
 bun install
-
-# Rust 依赖会在首次运行时自动下载
 ```
 
-### 开发模式
+Run the app in development mode / 启动开发模式：
 
 ```bash
-# 启动开发服务器（热重载）
 bun run tauri:dev
 ```
 
-### 生产构建
+Build a production package / 构建生产安装包：
 
 ```bash
-# 构建生产版本
 bun run tauri:build
 ```
 
----
+Run the frontend build check / 运行前端构建检查：
 
-## 项目结构
-
+```bash
+npm run build
 ```
+
+Run the translation coverage check / 检查多语言覆盖：
+
+```bash
+npm run i18n:check
+```
+
+## Project Structure / 项目结构
+
+```text
 SecondDesk/
-├── src/                    # Vue 3 前端代码
-│   ├── components/         # 组件
-│   ├── composables/        # 组合式函数
-│   ├── config/             # 配置文件
-│   ├── stores/             # Pinia 状态管理
-│   ├── styles/             # 样式文件
-│   ├── App.vue             # 根组件
-│   └── main.ts             # 入口文件
-│
-├── src-tauri/              # Rust 后端代码
-│   ├── src/
-│   │   ├── commands/       # Tauri 命令
-│   │   ├── core/           # 核心逻辑
-│   │   ├── utils/          # 工具函数
-│   │   ├── main.rs         # 主程序
-│   │   └── lib.rs          # 库入口
-│   ├── Cargo.toml          # Rust 配置
-│   └── tauri.conf.json     # Tauri 配置
-│
-├── package.json            # 前端配置
-├── vite.config.ts          # Vite 配置
-└── tsconfig.json           # TypeScript 配置
+|-- src/                 # Vue 3 frontend / Vue 3 前端
+|   |-- components/      # UI components / UI 组件
+|   |-- composables/     # Reusable composition functions / 组合式函数
+|   |-- config/          # Frontend configuration / 前端配置
+|   |-- i18n/            # English and Chinese localization / 中英文多语言
+|   |-- stores/          # Pinia stores / Pinia 状态管理
+|   `-- styles/          # Shared styles / 公共样式
+|-- src-tauri/           # Rust and Tauri application shell / Rust 与 Tauri 壳层
+|   |-- src/             # Commands, core logic, and app bootstrap / 命令、核心逻辑和启动入口
+|   |-- capabilities/    # Tauri permissions / Tauri 权限配置
+|   |-- icons/           # App and installer artwork / 应用与安装器图标
+|   |-- Cargo.toml       # Rust package metadata / Rust 包元数据
+|   `-- tauri.conf.json  # Tauri build, bundle, and updater config / Tauri 构建、打包和更新配置
+|-- package.json         # Frontend scripts and dependencies / 前端脚本与依赖
+`-- vite.config.ts       # Vite configuration / Vite 配置
 ```
 
----
+## Updating and Releases / 更新与发布
 
-## 性能指标
+Release builds are created by pushing a version tag such as `v1.3.2`. The GitHub Actions release workflow builds the Windows installers, uploads updater signatures, and publishes `latest.json` for the Tauri updater.
 
-| 指标 | 目标值 | 说明 |
-|------|--------|------|
-| 冷启动时间 | <1 秒 | 从点击到可用 |
-| 文件扫描 | <100ms | 100 个文件 |
-| 图标加载 | <50ms | 单个图标 |
-| 内存占用 | <300MB | 正常使用 |
-| 窗口动画 | 60fps | 流畅无卡顿 |
-| 二进制体积 | <50MB | 安装包大小 |
+发布版本通过推送类似 `v1.3.2` 的 tag 触发。GitHub Actions 会构建 Windows 安装包、上传更新签名，并发布 Tauri updater 使用的 `latest.json`。
 
----
+Keep these version fields in sync before tagging a release / 打 tag 前需要同步这些版本字段：
 
+- `package.json`
+- `package-lock.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `src-tauri/tauri.conf.json`
 
-## 💡 灵感来源
+The updater compares the installed Tauri app version with the version published in `latest.json`, so a release tag alone is not enough.
 
-本项目灵感来源于 [@Vicent轩](https://gitee.com/codevicent) 的 [EasyDesktop](https://gitee.com/codevicent/easy-desktop) 项目，在原项目的基础上进行了完全重构：
+更新器会比较本机安装的 Tauri 应用版本和 `latest.json` 中的线上版本，所以只改 tag 不够，应用内部版本也必须同步。
 
+## License / 许可证
 
-感谢原作者的创意和灵感！🙏
-
----
-
-## 开发路线图Run cargo fmt -- --check
-
-### 已完成 ✅
-
-- [x] 基础文件管理（扫描、打开、重命名、删除）
-- [x] 网格/列表视图切换
-- [x] 图标大小调节
-- [x] 实时搜索功能
-- [x] 分类管理系统
-- [x] 虚拟文件夹（拖拽创建、收藏、排序）
-- [x] 批量选择模式
-- [x] 主题系统（5 种配色 + 深浅色模式）
-- [x] 毛玻璃效果（4 种预设 + 自定义）
-- [x] 自定义背景图片
-- [x] 边缘触发系统（4 个方向）
-- [x] 全局快捷键
-- [x] 自动隐藏模式
-- [x] 全屏应用检测
-- [x] 窗口位置/大小调整
-- [x] 设置面板
-
-### 计划中 🚧
-
-- [ ] 新手引导流程
-- [ ] 最近访问记录
-- [ ] 访问频率统计
-- [ ] 自动更新功能
-- [ ] 模糊检索 - 支持拼音、首字母、关键词匹配
-- [ ] 网页搜索 - 快速调用搜索引擎
-- [ ] 路径快速打开 - 输入路径直接打开文件夹
-- [ ] 快捷命令 - 设置快捷打开常用应用
-- [ ] PowerShell 命令执行
-- [ ] 网页搜索集成
-
-
----
-
-## 许可证
-
-GPL V3.0 LICENSE
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
----
-
-## 已知问题
-
-> 当前版本已知问题，计划在后续版本中修复
-
-- 自动隐藏，需要手动触发一下才能恢复？需要探明原因才能修改
+GPL-3.0

@@ -1,114 +1,23 @@
-## v1.3.0 - 多文件夹监控 & 性能优化
+## v1.3.2 - Version metadata and bilingual documentation
 
-### ✨ 新功能
+### Fixes
 
-**多文件夹监控**
-- 支持同时监控多个文件夹，一键切换查看
-- 聚合视图：合并显示所有文件夹的内容
-- 每个文件夹独立的收藏、排序、虚拟分组配置
-- 重复文件名自动添加来源文件夹后缀
-- 懒加载机制：同一时刻只有一个活跃的文件监控器
+- Synchronized the application version metadata with the release tag so the updater no longer treats the latest installed build as an older version.
+- Updated package and installer descriptions to include both English and Chinese text.
+- Added a bilingual README for GitHub users and contributors.
 
-### ⚡ 性能优化
+### 中文说明
 
-**Rust 后端**
-- tokio 运行时按需加载，减少 1-3MB 内存占用
-- 图标缓存尺寸优化（256→192px），每图标节省约 44% 存储
-- 环境变量 OnceLock 缓存，避免重复系统调用
-- 文件排序使用缓存键，减少临时内存分配
-- 文件分类返回静态字符串，零分配
-- 移除不必要的 Mutex 锁，消除无意义的锁竞争
-- image 库关闭未用格式支持，减小二进制体积
-
-**Vue 前端**
-- 7 个核心状态改为 shallowRef，减少 Vue 响应式代理开销
-- 文件路径查找从 O(n) 优化到 O(1)（Map 索引）
-- localStorage 写入防抖（500ms），降低序列化频率
-- 删除未使用的 autoCategories 计算属性
-- 拖拽状态非响应式字段提取，减少不必要的追踪
-
-### 🔧 修复
-
-**内存泄漏修复**
-- 修复 FileWatcher channel 发送端未释放导致的任务泄漏
-- 修复 ActiveWatcher 切换路径时旧任务未终止的泄漏
-- 修复 EdgeDetector 无限循环无法优雅退出（引入 CancellationToken）
-- 修复 App.vue 事件监听器和定时器未清理的泄漏（4处）
-- 修复 active_watcher 嵌套写锁的潜在死锁风险
-
-**其他修复**
-- tray 图标生命周期管理改用 Box::leak（类型安全）
-- EdgeDetector 轮询频率优化（20FPS→10FPS），CPU 占用减半
-- 拖拽意图检测频率优化（50ms→100ms）
-
-### 📦 构建优化
-
-- Vite 构建目标设为 ES2020，CSS 合并为单文件
-- Tauri 打包目标精简为 NSIS + MSI
-- 资源协议作用域收窄，提升安全性
-- 移除未使用的依赖（dashmap、notify-debouncer-mini）
+- 已将应用内部版本元数据与发布 tag 同步，避免刚安装最新版后仍被更新器判断为旧版本。
+- 已将项目描述和安装包描述改为中英文双语。
+- 已补充 GitHub README 的中英文双语说明。
 
 ---
 
-## v1.2.0 - 自动更新
-
-### ✨ 新功能
-
-**自动更新系统**
-- 应用启动时自动检查更新
-- 左上角显示更新通知按钮
-- 一键下载并安装新版本
-- 支持"稍后提醒"功能（24小时后再次提醒）
-- 更新对话框显示版本信息和更新日志
-- 实时显示下载进度
-
-**用户体验优化**
-- 更新通知图标改为向上箭头（更直观）
-- 关闭对话框不会隐藏通知按钮
-- 点击"稍后提醒"才会隐藏通知
-- 设置面板新增"检查更新"按钮
-
-### 🔧 改进
-
-- 优化更新检查逻辑，避免重复提醒
-- 改进通知显示机制
-- 完善 GitHub Release 自动发布流程
-- 添加详细的调试日志
-
-### 📦 技术更新
-
-- 集成 Tauri 自动更新插件
-- 配置 MSI 静默安装模式
-- 实现 GitHub Releases 更新源
-- 添加更新签名验证机制
-
----
-
-## v1.1.0 - 智能搜索
-
-### 新功能
-
-**多模式智能搜索系统**
-
-- 文件搜索：实时关键词过滤，支持扩展名搜索
-- 命令执行：
-  - 系统应用快捷启动：`>calc`（计算器）、`>notepad`（记事本）等
-  - PowerShell 命令执行：`ps+参数`
-  - CMD 命令执行：`cmd+参数`
-- 搜索引擎集成：
-  - 百度搜索：`bd 关键词`
-  - Google 搜索：`gg 关键词`
-  - Bing 搜索：`bing 关键词`
-- 智能导航：
-  - 自动识别 URL（github.com、localhost:3000 等）
-  - 系统文件夹快速跳转：下载、文档、桌面、图片、音乐、视频
-  - 路径导航：输入任意路径直接打开
-- 智能提示：
-  - 实时建议列表，支持键盘导航（↑↓ 选择，Enter 执行）
-  - 搜索历史自动保存
+## v1.3.2 - 版本元数据与双语文档
 
 ### 修复
 
-- 修复本地 CI 脚本编码问题
-- 修复 Rust 格式检查未正确运行的问题
-- 完善项目文档
+- 同步应用内部版本号和 release tag，修复最新版仍提示更新的问题。
+- 项目描述、安装包描述改为中英文双语展示。
+- README 改为中英文双语版本。
