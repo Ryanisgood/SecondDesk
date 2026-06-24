@@ -2,9 +2,11 @@
 import { computed, ref } from 'vue'
 import { useBatchSelectStore } from '../stores/batchSelect'
 import { useFileStore, type DesktopCategory } from '../stores/files'
+import { useI18n } from '../i18n'
 
 const batchStore = useBatchSelectStore()
 const fileStore = useFileStore()
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -68,7 +70,7 @@ function handleOverlayClick(event: MouseEvent) {
       <div v-if="batchStore.targetPickerVisible" class="picker-overlay" @click="handleOverlayClick">
         <div class="picker-modal" @click.stop>
           <div class="picker-header">
-            <h3>移动到...</h3>
+            <h3>{{ t('moveTarget.title') }}</h3>
             <button class="close-btn" @click="handleClose">&#10005;</button>
           </div>
 
@@ -77,13 +79,13 @@ function handleOverlayClick(event: MouseEvent) {
               :class="['tab', { active: activeTab === 'categories' }]"
               @click="activeTab = 'categories'"
             >
-              &#127991; 分类
+              &#127991; {{ t('moveTarget.categories') }}
             </button>
             <button
               :class="['tab', { active: activeTab === 'virtualFolders' }]"
               @click="activeTab = 'virtualFolders'"
             >
-              &#128193; 虚拟分组
+              &#128193; {{ t('moveTarget.virtualFolders') }}
             </button>
           </div>
 
@@ -91,7 +93,7 @@ function handleOverlayClick(event: MouseEvent) {
             <!-- 分类列表 -->
             <div v-if="activeTab === 'categories'" class="target-list">
               <div v-if="customCategories.length === 0" class="empty-hint">
-                暂无自定义分类
+                {{ t('moveTarget.noCustomCategories') }}
               </div>
               <div
                 v-for="cat in customCategories"
@@ -101,19 +103,19 @@ function handleOverlayClick(event: MouseEvent) {
               >
                 <span class="target-icon">{{ cat.icon }}</span>
                 <span class="target-name">{{ cat.name }}</span>
-                <span class="target-count">{{ cat.count ?? 0 }} 项</span>
+                <span class="target-count">{{ t('common.items', { count: cat.count ?? 0 }) }}</span>
               </div>
 
               <button class="create-btn" @click="handleCreateCategory">
                 <span class="create-icon">&#43;</span>
-                <span>创建新分类</span>
+                <span>{{ t('moveTarget.createCategory') }}</span>
               </button>
             </div>
 
             <!-- 虚拟分组列表 -->
             <div v-if="activeTab === 'virtualFolders'" class="target-list">
               <div v-if="visibleVirtualFolders.length === 0" class="empty-hint">
-                当前分类下暂无虚拟分组
+                {{ t('moveTarget.noVirtualFolders') }}
               </div>
               <div
                 v-for="folder in visibleVirtualFolders"
@@ -123,7 +125,7 @@ function handleOverlayClick(event: MouseEvent) {
               >
                 <span class="target-icon">{{ folder.icon || '&#128193;' }}</span>
                 <span class="target-name">{{ folder.name }}</span>
-                <span class="target-count">{{ folder.memberPaths.length }} 项</span>
+                <span class="target-count">{{ t('common.items', { count: folder.memberPaths.length }) }}</span>
               </div>
 
               <button
@@ -132,7 +134,7 @@ function handleOverlayClick(event: MouseEvent) {
                 :disabled="batchStore.selectedCount < 2"
               >
                 <span class="create-icon">&#43;</span>
-                <span>创建新文件夹</span>
+                <span>{{ t('moveTarget.createFolder') }}</span>
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import type { VirtualFolder } from '../stores/files'
+import { useI18n } from '../i18n'
 
 interface Props {
   folder: VirtualFolder | null
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const newName = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const errorMessage = ref('')
+const { t } = useI18n()
 
 watch(() => props.folder, (folder) => {
   if (folder) {
@@ -34,7 +36,7 @@ function handleConfirm() {
   const trimmedName = newName.value.trim()
 
   if (!trimmedName) {
-    errorMessage.value = '分组名称不能为空'
+    errorMessage.value = t('virtualFolder.nameRequired')
     return
   }
 
@@ -58,16 +60,16 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
   <div v-if="folder" class="modal-overlay" @click.self="emit('close')">
     <div class="modal">
-      <h3 class="modal-title">重命名虚拟分组</h3>
+      <h3 class="modal-title">{{ t('virtualFolder.renameTitle') }}</h3>
 
       <div class="form-row">
-        <label class="label">新名称</label>
+        <label class="label">{{ t('virtualFolder.newName') }}</label>
         <input
           ref="inputRef"
           v-model="newName"
           class="input"
           type="text"
-          placeholder="输入分组名称"
+          :placeholder="t('virtualFolder.namePlaceholder')"
           @keydown="handleKeydown"
         />
       </div>
@@ -75,8 +77,8 @@ function handleKeydown(event: KeyboardEvent) {
       <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
 
       <div class="modal-actions">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" @click="handleConfirm">确定</button>
+        <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn primary" @click="handleConfirm">{{ t('common.confirm') }}</button>
       </div>
     </div>
   </div>

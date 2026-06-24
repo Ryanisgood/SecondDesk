@@ -6,6 +6,7 @@ import { detectInputType, parseInput } from '../utils/searchParser'
 import { findCommands } from '../utils/commandRegistry'
 import { useFileStore } from './files'
 import { useDrawerStore, DrawerState } from './drawer'
+import { t } from '../i18n'
 
 // 搜索历史存储 Key
 const SEARCH_HISTORY_KEY = 'seconddesk_search_history'
@@ -107,9 +108,9 @@ export const useSearchStore = defineStore('search', () => {
         if (['baidu', 'google', 'bing'].includes(cmd.id)) {
           if (parseResult.data.args && parseResult.data.args.length > 0) {
             const query = parseResult.data.args.join(' ')
-            description = `搜索：${query}`
+            description = t('search.searchFor', { query })
           } else {
-            description = `打开首页`
+            description = t('search.openHome')
           }
         }
 
@@ -130,7 +131,11 @@ export const useSearchStore = defineStore('search', () => {
       newSuggestions.push({
         id: 'nav-target',
         type: 'navigate',
-        title: navData.type === 'url' ? '打开网页' : navData.type === 'path' ? '打开文件夹' : '打开系统文件夹',
+        title: navData.type === 'url'
+          ? t('search.openWebsite')
+          : navData.type === 'path'
+            ? t('search.openFolder')
+            : t('search.openSystemFolder'),
         description: navData.normalized || navData.value,
         icon: navData.type === 'url' ? '🌐' : '📁',
         action: async () => {
@@ -162,7 +167,7 @@ export const useSearchStore = defineStore('search', () => {
         id: `history-${item.id}`,
         type: 'history' as const,
         title: item.query,
-        description: `最近使用 (${item.frequency} 次)`,
+        description: t('search.recentlyUsed', { count: item.frequency }),
         icon: '🕐',
         action: () => {
           setQuery(item.query)

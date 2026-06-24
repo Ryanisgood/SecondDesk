@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useSearchStore } from '../stores/search'
 import type { Suggestion, SuggestionGroup } from '../types/search'
+import { useI18n } from '../i18n'
 
 // Emits
 const emit = defineEmits<{
@@ -10,6 +11,7 @@ const emit = defineEmits<{
 
 // Store
 const searchStore = useSearchStore()
+const { t } = useI18n()
 
 // Computed
 const groupedSuggestions = computed<SuggestionGroup[]>(() => {
@@ -24,28 +26,28 @@ const groupedSuggestions = computed<SuggestionGroup[]>(() => {
 
   if (commandSuggestions.length > 0) {
     groups.push({
-      title: '命令',
+      title: t('search.group.commands'),
       items: commandSuggestions,
     })
   }
 
   if (navigateSuggestions.length > 0) {
     groups.push({
-      title: '导航',
+      title: t('search.group.navigate'),
       items: navigateSuggestions,
     })
   }
 
   if (fileSuggestions.length > 0) {
     groups.push({
-      title: '文件',
+      title: t('search.group.files'),
       items: fileSuggestions,
     })
   }
 
   if (historySuggestions.length > 0) {
     groups.push({
-      title: '历史记录',
+      title: t('search.group.history'),
       items: historySuggestions,
     })
   }

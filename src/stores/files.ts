@@ -3,6 +3,7 @@ import { ref, computed, shallowRef, triggerRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
+import { locale, t } from '../i18n'
 
 export interface FileItem {
   fileName: string
@@ -386,24 +387,27 @@ const ACTIVE_CATEGORY_STORAGE_KEY = 'seconddesk_active_category_v1'
 const PRESET_CATEGORIES_STORAGE_KEY = 'seconddesk_preset_categories_v1'
 const CATEGORY_ORDER_STORAGE_KEY = 'seconddesk_category_order_v1'
 
-const FILE_TYPE_OPTIONS: FileTypeOption[] = [
-  { fType: 'dir', name: '文件夹', icon: 'open-folder' },
-  { fType: 'shortcut', name: '快捷方式', icon: 'link' },
-  { fType: 'exe', name: '应用', icon: 'apps' },
-  { fType: 'text', name: '文本', icon: 'google-docs' },
+function getFileTypeOptions(): FileTypeOption[] {
+  void locale.value
+  return [
+  { fType: 'dir', name: t('fileType.folder'), icon: 'open-folder' },
+  { fType: 'shortcut', name: t('fileType.shortcut'), icon: 'link' },
+  { fType: 'exe', name: t('fileType.app'), icon: 'apps' },
+  { fType: 'text', name: t('fileType.text'), icon: 'google-docs' },
   { fType: 'word', name: 'Word', icon: 'google-docs' },
   { fType: 'excel', name: 'Excel', icon: 'excel' },
   { fType: 'powerpoint', name: 'PPT', icon: 'ppt' },
   { fType: 'pdf', name: 'PDF', icon: 'stack-of-books' },
-  { fType: 'image', name: '图片', icon: 'image' },
-  { fType: 'video', name: '视频', icon: 'video-marketing' },
-  { fType: 'audio', name: '音频', icon: 'music' },
-  { fType: 'archive', name: '压缩包', icon: 'zip' },
-  { fType: 'code', name: '代码', icon: '💻' },
+  { fType: 'image', name: t('fileType.image'), icon: 'image' },
+  { fType: 'video', name: t('fileType.video'), icon: 'video-marketing' },
+  { fType: 'audio', name: t('fileType.audio'), icon: 'music' },
+  { fType: 'archive', name: t('fileType.archive'), icon: 'zip' },
+  { fType: 'code', name: t('fileType.code'), icon: '💻' },
   { fType: 'web', name: 'Web', icon: 'worldwide' },
-  { fType: 'config', name: '配置', icon: 'gear' },
-  { fType: 'file', name: '其他', icon: 'box' },
-]
+  { fType: 'config', name: t('fileType.config'), icon: 'gear' },
+  { fType: 'file', name: t('fileType.other'), icon: 'box' },
+  ]
+}
 
 /**
  * 获取文件类型图标的 URL
@@ -514,19 +518,19 @@ export interface PresetCategory {
 export const PRESET_CATEGORIES: PresetCategory[] = [
   {
     id: 'preset:apps',
-    name: '应用',
+    name: 'category.apps',
     icon: 'apps',
     fTypes: ['exe', 'shortcut'],
   },
   {
     id: 'preset:documents',
-    name: '文档',
+    name: 'category.documents',
     icon: 'google-docs',
     fTypes: ['word', 'powerpoint', 'excel', 'pdf', 'text'],
   },
   {
     id: 'preset:media',
-    name: '媒体',
+    name: 'category.media',
     icon: 'video-marketing',
     fTypes: ['image', 'video', 'audio'],
   },
@@ -651,7 +655,7 @@ export const useFileStore = defineStore('files', () => {
   // 计算属性
   const fileCount = computed(() => files.value.length)
   const favoriteFiles = computed(() => files.value.filter(f => f.isFavorite))
-  const fileTypeOptions = computed(() => FILE_TYPE_OPTIONS)
+  const fileTypeOptions = computed(() => getFileTypeOptions())
   const fileTypeCounts = computed<Record<string, number>>(() => {
     const counts: Record<string, number> = {}
     for (const file of files.value) {
@@ -698,7 +702,7 @@ export const useFileStore = defineStore('files', () => {
     ).map(preset => ({
       id: preset.id,
       kind: 'auto' as CategoryKind,
-      name: preset.name,
+      name: t(preset.name as any),
       icon: preset.icon,
       fTypes: preset.fTypes,
       count: preset.fTypes.reduce((sum, fType) => sum + (counts[fType] ?? 0), 0),
@@ -707,7 +711,7 @@ export const useFileStore = defineStore('files', () => {
     const allCategory: DesktopCategory = {
       id: ALL_CATEGORY_ID,
       kind: 'all',
-      name: '全部',
+      name: t('category.all'),
       icon: 'open-folder',
       count: files.value.length,
     }
@@ -970,7 +974,7 @@ export const useFileStore = defineStore('files', () => {
     if (currentPath.value && currentPath.value.trim()) return currentPath.value
     await ensureDesktopPath()
     if (!desktopPath.value) {
-      throw new Error('无法获取桌面路径')
+      throw new Error(t('error.desktopPath'))
     }
     return desktopPath.value
   }
@@ -1059,7 +1063,7 @@ export const useFileStore = defineStore('files', () => {
 
     } catch (error) {
       console.error('❌ 加载文件失败：', error)
-      useDialog().error(`加载文件列表失败：${error}`)  // 显示错误给用户
+      useDialog().error(t('error.loadFiles', { error }))  // 显示错误给用户
       files.value = []
       filteredFiles.value = []
     } finally {
@@ -1542,7 +1546,7 @@ export const useFileStore = defineStore('files', () => {
       await invoke('open_file', { filePath })
     } catch (error) {
       console.error('❌ 打开文件失败：', error)
-      useDialog().error(`打开文件失败：${error}`)
+      useDialog().error(t('error.openFile', { error }))
     }
   }
 
@@ -1551,7 +1555,7 @@ export const useFileStore = defineStore('files', () => {
       await invoke('show_file', { filePath })
     } catch (error) {
       console.error('❌ 显示文件失败：', error)
-      useDialog().error(`在资源管理器中显示失败：${error}`)
+      useDialog().error(t('error.showInExplorer', { error }))
     }
   }
 
@@ -1580,7 +1584,7 @@ export const useFileStore = defineStore('files', () => {
 
   async function undoLastDelete() {
     if (!lastDeletedPath.value) {
-      throw new Error('没有可撤销的删除')
+      throw new Error(t('error.noUndoDelete'))
     }
     const filePath = lastDeletedPath.value
     try {
@@ -1828,7 +1832,7 @@ export const useFileStore = defineStore('files', () => {
 
     const newFolder: VirtualFolder = {
       id: `vf_${Date.now()}`,
-      name: name || '新文件夹',
+      name: name || t('newItem.newFolder'),
       icon: '📁',
       memberPaths: uniquePaths,
       createdAt: Date.now(),
@@ -2064,7 +2068,7 @@ export const useFileStore = defineStore('files', () => {
 
     return Array.from(pathKeys).map(pathKey => ({
       pathKey,
-      displayName: pathKey === DESKTOP_PATH_KEY ? '桌面（默认）' : pathKey,
+      displayName: pathKey === DESKTOP_PATH_KEY ? t('path.desktopDefault') : pathKey,
       hasIconOrder: !!iconOrderMap.value[pathKey],
       hasSortMode: !!sortModeMap.value[pathKey],
       hasVirtualFolders: (virtualFoldersMap.value[pathKey]?.length ?? 0) > 0,

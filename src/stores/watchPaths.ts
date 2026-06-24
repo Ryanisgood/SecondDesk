@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { t } from '../i18n'
 
 export interface WatchPathEntry {
   id: string        // 桌面为 "__desktop__"，自定义为 "wp_" + timestamp
@@ -40,14 +41,14 @@ export const useWatchPathsStore = defineStore('watchPaths', () => {
 
   /** 当前活跃视图的显示名 */
   const activeViewLabel = computed(() => {
-    if (isAllView.value) return '所有文件夹'
+    if (isAllView.value) return t('path.allFolders')
 
     const entry = watchPaths.value.find(wp => wp.id === activeViewId.value)
     if (entry) {
-      if (entry.builtin) return '桌面'
+      if (entry.builtin) return t('path.desktop')
       return entry.label || getPathFolderName(entry.path)
     }
-    return '桌面'
+    return t('path.desktop')
   })
 
   // 方法
@@ -57,7 +58,7 @@ export const useWatchPathsStore = defineStore('watchPaths', () => {
   }
 
   function getEntryLabel(entry: WatchPathEntry): string {
-    if (entry.builtin) return '桌面'
+    if (entry.builtin) return t('path.desktop')
     return entry.label || getPathFolderName(entry.path)
   }
 
@@ -100,7 +101,7 @@ export const useWatchPathsStore = defineStore('watchPaths', () => {
     // 前端也做一层保护
     const entry = watchPaths.value.find(wp => wp.id === pathId)
     if (entry?.builtin) {
-      throw new Error('内置路径不可删除')
+      throw new Error(t('error.builtinPathDelete'))
     }
 
     try {

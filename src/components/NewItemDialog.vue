@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useI18n } from '../i18n'
 
 interface Props {
   isDir: boolean
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const itemName = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const errorMessage = ref('')
+const { t } = useI18n()
 
 watch(() => props.visible, (visible) => {
   if (visible) {
@@ -30,20 +32,20 @@ function handleConfirm() {
   const trimmedName = itemName.value.trim()
 
   if (!trimmedName) {
-    errorMessage.value = `${props.isDir ? '文件夹' : '文件'}名不能为空`
+    errorMessage.value = t('newItem.nameRequired', { type: props.isDir ? t('newItem.folderName') : t('newItem.fileName') })
     return
   }
 
   // 检查文件名是否包含非法字符
   const invalidChars = /[<>:"/\\|?*]/
   if (invalidChars.test(trimmedName)) {
-    errorMessage.value = '名称不能包含以下字符: < > : " / \\ | ? *'
+    errorMessage.value = t('newItem.invalidChars')
     return
   }
 
   // 检查是否以点开头（隐藏文件）
   if (trimmedName.startsWith('.')) {
-    errorMessage.value = '名称不能以点(.)开头'
+    errorMessage.value = t('newItem.noLeadingDot')
     return
   }
 
@@ -68,16 +70,16 @@ function handleOverlayClick(event: MouseEvent) {
 <template>
   <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
     <div class="modal">
-      <h3 class="modal-title">{{ isDir ? '新建文件夹' : '新建文件' }}</h3>
+      <h3 class="modal-title">{{ isDir ? t('newItem.newFolder') : t('newItem.newFile') }}</h3>
 
       <div class="form-row">
-        <label class="label">{{ isDir ? '文件夹名称' : '文件名' }}</label>
+        <label class="label">{{ isDir ? t('newItem.folderName') : t('newItem.fileName') }}</label>
         <input
           ref="inputRef"
           v-model="itemName"
           class="input"
           type="text"
-          :placeholder="isDir ? '例如：新建文件夹' : '例如：新建文件.txt'"
+          :placeholder="isDir ? t('newItem.folderPlaceholder') : t('newItem.filePlaceholder')"
           @keydown="handleKeydown"
         />
       </div>
@@ -85,8 +87,8 @@ function handleOverlayClick(event: MouseEvent) {
       <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
 
       <div class="modal-actions">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" @click="handleConfirm">创建</button>
+        <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn primary" @click="handleConfirm">{{ t('common.create') }}</button>
       </div>
     </div>
   </div>

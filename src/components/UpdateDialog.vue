@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useUpdaterStore } from '../stores/updater'
+import { useI18n } from '../i18n'
 
 const updaterStore = useUpdaterStore()
+const { t } = useI18n()
 
 const progressText = computed(() => {
   if (updaterStore.downloading) {
-    return `下载中... ${updaterStore.downloadProgress}%`
+    return t('update.downloading', { progress: updaterStore.downloadProgress })
   }
-  return '立即更新'
+  return t('update.updateNow')
 })
 
 const handleUpdate = () => {
@@ -40,7 +42,7 @@ const handleClose = () => {
                 <path d="M12 19V5M5 12l7-7 7 7"/>
               </svg>
               <div class="header-text">
-                <h3 class="dialog-title">发现新版本</h3>
+                <h3 class="dialog-title">{{ t('update.newVersionFound') }}</h3>
                 <p class="version-info">{{ updaterStore.updateInfo?.version || 'Unknown' }}</p>
               </div>
             </div>
@@ -50,8 +52,8 @@ const handleClose = () => {
           <!-- 更新内容 -->
           <div class="dialog-body">
             <div class="update-notes">
-              <h4 class="notes-title">更新内容</h4>
-              <div class="notes-content">{{ updaterStore.updateInfo?.body || '暂无说明' }}</div>
+              <h4 class="notes-title">{{ t('update.notesTitle') }}</h4>
+              <div class="notes-content">{{ updaterStore.updateInfo?.body || t('update.noNotes') }}</div>
             </div>
           </div>
 
@@ -73,7 +75,7 @@ const handleClose = () => {
           <!-- 底部按钮 -->
           <div class="dialog-footer">
             <button class="dialog-btn secondary-btn" @click="handleLater" :disabled="updaterStore.downloading">
-              稍后提醒
+              {{ t('update.remindLater') }}
             </button>
             <button class="dialog-btn primary-btn" @click="handleUpdate" :disabled="updaterStore.downloading">
               {{ progressText }}

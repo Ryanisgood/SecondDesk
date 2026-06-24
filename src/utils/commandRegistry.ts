@@ -1,14 +1,27 @@
 // 命令注册表 - 管理所有可执行命令
 import { invoke } from '@tauri-apps/api/core'
 import type { Command } from '../types/search'
+import { t, type MessageKey } from '../i18n'
+
+function localizedCommand(command: Command, nameKey: MessageKey, descriptionKey: MessageKey): Command {
+  return {
+    ...command,
+    get name() {
+      return t(nameKey)
+    },
+    get description() {
+      return t(descriptionKey)
+    },
+  }
+}
 
 // 内置命令列表
 const BUILTIN_COMMANDS: Command[] = [
   // ==================== 系统命令 ====================
-  {
+  localizedCommand({
     id: 'calc',
-    name: '计算器',
-    description: '打开 Windows 计算器',
+    name: '',
+    description: '',
     aliases: ['calculator', '计算器', 'cal'],
     icon: '🧮',
     category: 'system',
@@ -16,11 +29,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'calc.exe' })
     },
-  },
-  {
+  }, 'command.calc.name', 'command.calc.description'),
+  localizedCommand({
     id: 'cmd',
-    name: '命令提示符',
-    description: '打开命令提示符或执行命令',
+    name: '',
+    description: '',
     aliases: ['command', '命令行'],
     icon: '/src/assets/search/cmd.png',
     category: 'system',
@@ -38,11 +51,11 @@ const BUILTIN_COMMANDS: Command[] = [
         await invoke('launch_application', { appName: 'cmd.exe' })
       }
     },
-  },
-  {
+  }, 'command.cmd.name', 'command.cmd.description'),
+  localizedCommand({
     id: 'powershell',
     name: 'PowerShell',
-    description: '打开 PowerShell 或执行命令',
+    description: '',
     aliases: ['ps', 'pwsh', 'posh'],
     icon: '/src/assets/search/powershell.png',
     category: 'system',
@@ -60,11 +73,11 @@ const BUILTIN_COMMANDS: Command[] = [
         await invoke('launch_application', { appName: 'powershell.exe' })
       }
     },
-  },
-  {
+  }, 'command.powershell.name', 'command.powershell.description'),
+  localizedCommand({
     id: 'notepad',
-    name: '记事本',
-    description: '打开记事本',
+    name: '',
+    description: '',
     aliases: ['记事本', 'note'],
     icon: '📝',
     category: 'system',
@@ -72,11 +85,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'notepad.exe' })
     },
-  },
-  {
+  }, 'command.notepad.name', 'command.notepad.description'),
+  localizedCommand({
     id: 'explorer',
-    name: '资源管理器',
-    description: '打开文件资源管理器',
+    name: '',
+    description: '',
     aliases: ['文件管理器', 'file explorer', 'files'],
     icon: '📁',
     category: 'system',
@@ -84,11 +97,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'explorer.exe' })
     },
-  },
-  {
+  }, 'command.explorer.name', 'command.explorer.description'),
+  localizedCommand({
     id: 'taskmgr',
-    name: '任务管理器',
-    description: '打开任务管理器',
+    name: '',
+    description: '',
     aliases: ['task manager', '进程管理'],
     icon: '📊',
     category: 'system',
@@ -96,11 +109,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'taskmgr.exe' })
     },
-  },
-  {
+  }, 'command.taskmgr.name', 'command.taskmgr.description'),
+  localizedCommand({
     id: 'mspaint',
-    name: '画图',
-    description: '打开画图工具',
+    name: '',
+    description: '',
     aliases: ['paint', '绘图'],
     icon: '🎨',
     category: 'system',
@@ -108,11 +121,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'mspaint.exe' })
     },
-  },
-  {
+  }, 'command.mspaint.name', 'command.mspaint.description'),
+  localizedCommand({
     id: 'control',
-    name: '控制面板',
-    description: '打开控制面板',
+    name: '',
+    description: '',
     aliases: ['控制面板', 'settings'],
     icon: '⚙️',
     category: 'system',
@@ -120,11 +133,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'control.exe' })
     },
-  },
-  {
+  }, 'command.control.name', 'command.control.description'),
+  localizedCommand({
     id: 'regedit',
-    name: '注册表编辑器',
-    description: '打开注册表编辑器',
+    name: '',
+    description: '',
     aliases: ['registry', '注册表'],
     icon: '📋',
     category: 'system',
@@ -132,11 +145,11 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'regedit.exe' })
     },
-  },
-  {
+  }, 'command.regedit.name', 'command.regedit.description'),
+  localizedCommand({
     id: 'msconfig',
-    name: '系统配置',
-    description: '打开系统配置工具',
+    name: '',
+    description: '',
     aliases: ['系统配置', 'config'],
     icon: '🔧',
     category: 'system',
@@ -144,13 +157,13 @@ const BUILTIN_COMMANDS: Command[] = [
     execute: async () => {
       await invoke('launch_application', { appName: 'msconfig.exe' })
     },
-  },
+  }, 'command.msconfig.name', 'command.msconfig.description'),
 
   // ==================== 搜索引擎 ====================
-  {
+  localizedCommand({
     id: 'baidu',
-    name: '百度搜索',
-    description: '使用百度搜索内容',
+    name: '',
+    description: '',
     aliases: ['bd', '百度'],
     icon: '/src/assets/search/baidu.png',
     category: 'search',
@@ -164,11 +177,11 @@ const BUILTIN_COMMANDS: Command[] = [
         await invoke('open_url', { url: 'https://www.baidu.com' })
       }
     },
-  },
-  {
+  }, 'command.baidu.name', 'command.baidu.description'),
+  localizedCommand({
     id: 'google',
-    name: 'Google 搜索',
-    description: '使用 Google 搜索内容',
+    name: '',
+    description: '',
     aliases: ['gg', 'google', '谷歌'],
     icon: '/src/assets/search/google.png',
     category: 'search',
@@ -182,11 +195,11 @@ const BUILTIN_COMMANDS: Command[] = [
         await invoke('open_url', { url: 'https://www.google.com' })
       }
     },
-  },
-  {
+  }, 'command.google.name', 'command.google.description'),
+  localizedCommand({
     id: 'bing',
-    name: 'Bing 搜索',
-    description: '使用 Bing 搜索内容',
+    name: '',
+    description: '',
     aliases: ['必应'],
     icon: '/src/assets/search/bing.png',
     category: 'search',
@@ -200,7 +213,7 @@ const BUILTIN_COMMANDS: Command[] = [
         await invoke('open_url', { url: 'https://www.bing.com' })
       }
     },
-  },
+  }, 'command.bing.name', 'command.bing.description'),
 ]
 
 // 命令注册表类
@@ -304,7 +317,7 @@ class CommandRegistry {
   async executeCommand(id: string, args?: string[]): Promise<void> {
     const command = this.commands.get(id)
     if (!command) {
-      throw new Error(`命令未找到: ${id}`)
+      throw new Error(t('command.notFound', { id }))
     }
 
     try {

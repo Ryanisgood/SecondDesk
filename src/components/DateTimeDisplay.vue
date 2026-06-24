@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { locale, t } from '../i18n'
 
 const currentTime = ref('')
 const currentDate = ref('')
@@ -15,10 +16,10 @@ function updateDateTime() {
   // 日期：MM月DD日星期X（移除年份）
   const month = now.getMonth() + 1
   const day = now.getDate()
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  const weekdays = t('date.weekdays').split(',')
   const weekday = weekdays[now.getDay()]
 
-  currentDate.value = `${month}月${day}日星期${weekday}`
+  currentDate.value = t('date.format', { month, day, weekday })
 }
 
 let intervalId: number | null = null
@@ -34,6 +35,8 @@ onUnmounted(() => {
     clearInterval(intervalId)
   }
 })
+
+watch(locale, updateDateTime)
 </script>
 
 <template>

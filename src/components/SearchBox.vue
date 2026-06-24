@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, useAttrs } from 'vue'
 import { useSearchStore } from '../stores/search'
 import { useFileStore } from '../stores/files'
 import SearchSuggestions from './SearchSuggestions.vue'
+import { useI18n } from '../i18n'
 
 // Props
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
 }
 
 const _props = withDefaults(defineProps<Props>(), {
-  placeholder: '搜索文件、命令、网址...',
+  placeholder: '',
 })
 void _props // Keep props reactive for template usage
 
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 // Stores
 const searchStore = useSearchStore()
 const fileStore = useFileStore()
+const { t } = useI18n()
 
 // Refs
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -130,7 +132,7 @@ async function handleEnter(): Promise<void> {
   } catch (error) {
     console.error('执行操作失败:', error)
     // 显示错误提示
-    const errorMsg = error instanceof Error ? error.message : '执行操作失败'
+    const errorMsg = error instanceof Error ? error.message : t('search.executeFailed')
     showError(errorMsg)
   }
 }
@@ -251,7 +253,7 @@ defineExpose({
         v-if="localQuery"
         class="clear-btn"
         @click.stop="clear"
-        title="清空"
+        :title="t('search.clear')"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>

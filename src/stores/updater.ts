@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
+import { t } from '../i18n'
 
 export interface UpdateInfo {
   version: string
@@ -39,7 +40,7 @@ export const useUpdaterStore = defineStore('updater', () => {
         updateInfo.value = {
           version: update.version,
           date: update.date,
-          body: update.body || '暂无更新说明',
+          body: update.body || t('updater.noNotes'),
         }
 
         // 显示通知（非静默模式或满足提醒条件）
@@ -75,7 +76,7 @@ export const useUpdaterStore = defineStore('updater', () => {
     try {
       // 使用缓存的 update 对象，如果没有则重新获取
       const update = cachedUpdate || await check()
-      if (!update) throw new Error('未找到更新')
+      if (!update) throw new Error(t('updater.noUpdate'))
 
       let totalSize = 0
       let downloadedSize = 0
@@ -101,7 +102,7 @@ export const useUpdaterStore = defineStore('updater', () => {
       await relaunch()
     } catch (error) {
       console.error('更新失败:', error)
-      errorMessage.value = error instanceof Error ? error.message : '更新安装失败，请稍后重试'
+      errorMessage.value = error instanceof Error ? error.message : t('updater.installFailed')
       downloading.value = false
       downloadProgress.value = 0
     }

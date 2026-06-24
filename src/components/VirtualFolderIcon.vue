@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { type VirtualFolder, type FileItem, useFileStore } from '../stores/files'
 import { getFileIcon } from '../utils/iconMapper'
+import { useI18n } from '../i18n'
 
 interface Props {
   folder: VirtualFolder
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 }>()
 
 const fileStore = useFileStore()
+const { t } = useI18n()
 
 // 获取成员文件的图标
 const memberFiles = computed<FileItem[]>(() => {
@@ -184,14 +186,14 @@ function handleIconError(e: Event) {
     <!-- 文件夹名称和收藏按钮 -->
     <div class="folder-info">
       <div class="folder-name" :title="folder.name">{{ folder.name }}</div>
-      <div v-if="viewMode === 'grid'" class="member-count">{{ folder.memberPaths.length }} 个项目</div>
+      <div v-if="viewMode === 'grid'" class="member-count">{{ t('virtualFolder.itemCount', { count: folder.memberPaths.length }) }}</div>
       <!-- 列表模式：收藏按钮在 folder-info 内部 -->
       <button
         v-if="viewMode === 'list' && !isBatchMode"
         class="favorite-btn"
         :class="{ active: folder.isFavorite }"
         @click="handleToggleFavorite"
-        :title="folder.isFavorite ? '取消收藏' : '收藏'"
+        :title="folder.isFavorite ? t('context.removeFavorite') : t('context.addFavorite')"
       >
         {{ folder.isFavorite ? '⭐' : '☆' }}
       </button>
@@ -203,7 +205,7 @@ function handleIconError(e: Event) {
       class="favorite-btn"
       :class="{ active: folder.isFavorite }"
       @click="handleToggleFavorite"
-      :title="folder.isFavorite ? '取消收藏' : '收藏'"
+      :title="folder.isFavorite ? t('context.removeFavorite') : t('context.addFavorite')"
     >
       {{ folder.isFavorite ? '⭐' : '☆' }}
     </button>

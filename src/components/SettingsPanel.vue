@@ -6,11 +6,13 @@ import { GLASS_PRESETS, COLOR_THEMES, type GlassStyle } from '../config/themes'
 import { applyFullTheme as applyThemeUtil } from '../utils/theme'
 import { useDrawerStore, DrawerSide } from '../stores/drawer'
 import { useWatchPathsStore } from '../stores/watchPaths'
+import { useSearchStore } from '../stores/search'
 import appLogoUrl from '../assets/app-logo.png'
 import FolderCacheManager from './FolderCacheManager.vue'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
 import { useUpdaterStore } from '../stores/updater'
+import { useI18n, type Locale } from '../i18n'
 
 // 图标路径
 const iconGear = getIconPath('gear')
@@ -35,6 +37,8 @@ const drawerStore = useDrawerStore()
 const dialog = useDialog()
 const updaterStore = useUpdaterStore()
 const watchPathsStore = useWatchPathsStore()
+const searchStore = useSearchStore()
+const { locale, setLocale, t } = useI18n()
 
 // 主题状态（精简为 5 种颜色）
 type ThemeColor = 'blue' | 'green' | 'purple' | 'amber' | 'pink'
@@ -57,7 +61,7 @@ const showHiddenFiles = ref(false)
 const confirmDelete = ref(true)
 const viewMode = ref<'grid' | 'list'>('grid')
 const showCacheManager = ref(false)
-const appVersion = ref('加载中...')
+const appVersion = ref(t('common.loading'))
 
 // 背景图片设置
 const backgroundImagePath = ref<string | null>(null)
@@ -79,7 +83,7 @@ onMounted(async () => {
     appVersion.value = await getVersion()
   } catch (e) {
     console.error('获取版本号失败', e)
-    appVersion.value = '未知'
+    appVersion.value = t('common.unknown')
   }
 
   // 监听系统主题变化
@@ -174,7 +178,7 @@ function getEffectiveTheme(): 'light' | 'dark' {
 function getCustomGlassConfig(): GlassStyle | undefined {
   if (glassPreset.value === 'custom') {
     return {
-      name: '自定义',
+      name: t('common.custom'),
       blur: customBlur.value,
       saturation: customSaturation.value,
       opacity: customOpacity.value / 100,
@@ -226,7 +230,7 @@ function handleCustomGlassChange() {
   localStorage.setItem('seconddesk_glass_preset', 'custom')
 
   const customGlass = {
-    name: '自定义',
+    name: t('common.custom'),
     blur: customBlur.value,
     saturation: customSaturation.value,
     opacity: customOpacity.value / 100,
@@ -258,9 +262,9 @@ async function handleAutoStartChange(value: boolean) {
     await invoke('set_auto_start', { enabled: value })
     autoStart.value = value
     localStorage.setItem('seconddesk_autostart', value.toString())
-    await dialog.success(value ? '已开启开机自启动' : '已关闭开机自启动')
+    await dialog.success(value ? t('settings.autoStartEnabled') : t('settings.autoStartDisabled'))
   } catch (error) {
-    await dialog.error(`设置开机自启失败：${error}`)
+    await dialog.error(t('settings.autoStartFailed', { error }))
     // 恢复原状态
     autoStart.value = !value
   }
@@ -305,12 +309,12 @@ async function handleAddWatchPath() {
     }
   } catch (error) {
     console.error('添加监控路径失败:', error)
-    await dialog.error(`添加监控路径失败: ${error}`)
+    await dialog.error(t('settings.addWatchPathFailed', { error }))
   }
 }
 
 async function handleRemoveWatchPath(pathId: string) {
-  const confirmed = await dialog.confirmDanger('确定要移除此监控路径吗？', { title: '移除路径' })
+  const confirmed = await dialog.confirmDanger(t('settings.removePathConfirm'), { title: t('settings.removePathTitle') })
   if (!confirmed) return
 
   try {
@@ -318,7 +322,7 @@ async function handleRemoveWatchPath(pathId: string) {
     emit('watch-path-changed', null)
   } catch (error) {
     console.error('移除监控路径失败:', error)
-    await dialog.error(`移除监控路径失败: ${error}`)
+    await dialog.error(t('settings.removePathFailed', { error }))
   }
 }
 
@@ -358,7 +362,7 @@ async function handleSelectBackgroundImage() {
       saveBackgroundSettings()
     }
   } catch (error) {
-    await dialog.error(`选择图片失败：${error}`)
+    await dialog.error(t('settings.selectImageFailed', { error }))
   }
 }
 
@@ -379,8 +383,8 @@ const backgroundImageUrl = computed(() => {
 
 async function handleClearCache() {
   const confirmed = await dialog.confirmDanger(
-    '确定要清除所有缓存数据吗？这将清除收藏、分类等所有设置。',
-    { title: '清除缓存' }
+    t('settings.clearAllCacheConfirm'),
+    { title: t('folderCache.clearTitle') }
   )
   if (confirmed) {
     try {
@@ -388,16 +392,16 @@ async function handleClearCache() {
       const keys = Object.keys(localStorage).filter(k => k.startsWith('seconddesk_'))
       keys.forEach(key => localStorage.removeItem(key))
 
-      await dialog.success('缓存已清除，应用将刷新')
+      await dialog.success(t('settings.cacheCleared'))
       window.location.reload()
     } catch (error) {
-      await dialog.error(`清除缓存失败：${error}`)
+      await dialog.error(t('settings.clearCacheFailed', { error }))
     }
   }
 }
 
 async function handleResetSettings() {
-  const confirmed = await dialog.confirm('确定要重置所有设置为默认值吗？', { title: '重置设置' })
+  const confirmed = await dialog.confirm(t('settings.resetConfirm'), { title: t('settings.resetTitle') })
   if (confirmed) {
     // 重置所有设置
     handleThemeModeChange('light')
@@ -409,7 +413,7 @@ async function handleResetSettings() {
     handleConfirmDeleteChange(true)
     handleViewModeChange('grid')
 
-    await dialog.success('设置已重置')
+    await dialog.success(t('settings.resetDone'))
   }
 }
 
@@ -566,7 +570,7 @@ async function handleKeyUp(e: KeyboardEvent) {
       capturedKeys.value = []
 
       // 提示用户需要重启应用才能生效
-      await dialog.info('快捷键已更新，需要重启应用才能生效', { title: '快捷键设置' })
+      await dialog.info(t('settings.hotkeyUpdated'), { title: t('settings.hotkeyTitle') })
     }
   }
 }
@@ -584,11 +588,16 @@ async function handleCheckForUpdates() {
       // 直接打开更新对话框
       updaterStore.showUpdateDialog()
     } else {
-      await dialog.info('当前已是最新版本')
+      await dialog.info(t('settings.latestVersion'))
     }
   } catch (error) {
-    await dialog.error(`检查更新失败：${error}`)
+    await dialog.error(t('settings.checkUpdateFailed', { error }))
   }
+}
+
+function handleLocaleChange(nextLocale: Locale) {
+  setLocale(nextLocale)
+  searchStore.updateSuggestions()
 }
 
 onMounted(() => {
@@ -604,44 +613,62 @@ onMounted(() => {
   <div class="modal-overlay" @click.self="handleClose">
     <div class="settings-panel">
       <div class="settings-header">
-        <h2 class="settings-title"><img :src="iconGear" class="section-icon" alt="" /> 设置</h2>
+        <h2 class="settings-title"><img :src="iconGear" class="section-icon" alt="" /> {{ t('settings.title') }}</h2>
         <button class="close-btn" @click="handleClose">✕</button>
       </div>
 
       <div class="settings-content">
         <!-- 外观设置 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconThemes" class="section-icon" alt="" /> 外观</h3>
+          <h3 class="section-title"><img :src="iconThemes" class="section-icon" alt="" /> {{ t('settings.appearance') }}</h3>
 
           <div class="setting-item">
-            <div class="setting-label">主题模式</div>
+            <div class="setting-label">{{ t('settings.themeMode') }}</div>
             <div class="theme-mode-selector">
               <button
                 :class="['mode-btn', { active: themeMode === 'light' }]"
                 @click="handleThemeModeChange('light')"
-                title="亮色模式"
+                :title="t('settings.lightMode')"
               >
-                <img :src="iconSun" class="btn-icon" alt="" /> 亮色
+                <img :src="iconSun" class="btn-icon" alt="" /> {{ t('settings.light') }}
               </button>
               <button
                 :class="['mode-btn', { active: themeMode === 'dark' }]"
                 @click="handleThemeModeChange('dark')"
-                title="暗色模式"
+                :title="t('settings.darkMode')"
               >
-                <img :src="iconMoon" class="btn-icon" alt="" /> 暗色
+                <img :src="iconMoon" class="btn-icon" alt="" /> {{ t('settings.dark') }}
               </button>
               <button
                 :class="['mode-btn', { active: themeMode === 'auto' }]"
                 @click="handleThemeModeChange('auto')"
-                title="跟随系统"
+                :title="t('settings.followSystem')"
               >
-                <img :src="iconRefresh" class="btn-icon" alt="" /> 系统
+                <img :src="iconRefresh" class="btn-icon" alt="" /> {{ t('settings.system') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-label">{{ t('language.label') }}</div>
+            <div class="theme-mode-selector">
+              <button
+                :class="['mode-btn', { active: locale === 'zh-CN' }]"
+                @click="handleLocaleChange('zh-CN')"
+              >
+                {{ t('language.chinese') }}
+              </button>
+              <button
+                :class="['mode-btn', { active: locale === 'en-US' }]"
+                @click="handleLocaleChange('en-US')"
+              >
+                {{ t('language.english') }}
               </button>
             </div>
           </div>
 
           <div class="setting-item color-setting">
-            <div class="setting-label">主题颜色</div>
+            <div class="setting-label">{{ t('settings.themeColor') }}</div>
             <div class="color-selector">
               <button
                 v-for="theme in COLOR_THEMES"
@@ -657,7 +684,7 @@ onMounted(() => {
           </div>
 
           <div class="setting-item glass-setting">
-            <div class="setting-label">毛玻璃风格</div>
+            <div class="setting-label">{{ t('settings.glassStyle') }}</div>
             <div class="glass-presets">
               <button
                 v-for="(preset, key) in GLASS_PRESETS"
@@ -671,7 +698,7 @@ onMounted(() => {
                 :class="['preset-btn', { active: glassPreset === 'custom' }]"
                 @click="glassPreset = 'custom'"
               >
-                自定义
+                {{ t('common.custom') }}
               </button>
             </div>
           </div>
@@ -681,7 +708,7 @@ onMounted(() => {
             <div class="glass-controls">
               <div class="control-item">
                 <label class="control-label">
-                  <span>模糊强度</span>
+                  <span>{{ t('settings.blur') }}</span>
                   <span class="control-value">{{ customBlur }}px</span>
                 </label>
                 <input
@@ -697,7 +724,7 @@ onMounted(() => {
 
               <div class="control-item">
                 <label class="control-label">
-                  <span>饱和度</span>
+                  <span>{{ t('settings.saturation') }}</span>
                   <span class="control-value">{{ customSaturation }}%</span>
                 </label>
                 <input
@@ -713,7 +740,7 @@ onMounted(() => {
 
               <div class="control-item">
                 <label class="control-label">
-                  <span>主背景不透明度</span>
+                  <span>{{ t('settings.primaryOpacity') }}</span>
                   <span class="control-value">{{ customOpacity }}%</span>
                 </label>
                 <input
@@ -729,7 +756,7 @@ onMounted(() => {
 
               <div class="control-item">
                 <label class="control-label">
-                  <span>次背景不透明度</span>
+                  <span>{{ t('settings.secondaryOpacity') }}</span>
                   <span class="control-value">{{ customOpacitySecondary }}%</span>
                 </label>
                 <input
@@ -747,21 +774,21 @@ onMounted(() => {
 
           <!-- 背景图片设置 -->
           <div class="setting-item background-setting">
-            <div class="setting-label">背景图片</div>
+            <div class="setting-label">{{ t('settings.backgroundImage') }}</div>
             <div class="background-controls">
               <button
                 v-if="!backgroundImagePath"
                 class="action-btn small-btn"
                 @click="handleSelectBackgroundImage"
               >
-                选择图片
+                {{ t('settings.chooseImage') }}
               </button>
               <template v-else>
                 <div class="background-preview">
-                  <img :src="backgroundImageUrl" alt="背景预览" />
+                  <img :src="backgroundImageUrl" :alt="t('settings.backgroundPreview')" />
                 </div>
                 <button class="action-btn small-btn danger-btn" @click="handleClearBackgroundImage">
-                  清除
+                  {{ t('common.clear') }}
                 </button>
               </template>
             </div>
@@ -772,7 +799,7 @@ onMounted(() => {
             <div class="glass-controls">
               <div class="control-item">
                 <label class="control-label">
-                  <span>图片不透明度</span>
+                  <span>{{ t('settings.imageOpacity') }}</span>
                   <span class="control-value">{{ backgroundOpacity }}%</span>
                 </label>
                 <input
@@ -787,7 +814,7 @@ onMounted(() => {
               </div>
               <div class="control-item">
                 <label class="control-label">
-                  <span>图片模糊度</span>
+                  <span>{{ t('settings.imageBlur') }}</span>
                   <span class="control-value">{{ backgroundBlur }}px</span>
                 </label>
                 <input
@@ -804,19 +831,19 @@ onMounted(() => {
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">默认视图</div>
+            <div class="setting-label">{{ t('settings.defaultView') }}</div>
             <div class="view-selector">
               <button
                 :class="['view-btn', { active: viewMode === 'grid' }]"
                 @click="handleViewModeChange('grid')"
               >
-                <img :src="iconGrid" class="btn-icon" alt="" /> 网格
+                <img :src="iconGrid" class="btn-icon" alt="" /> {{ t('settings.grid') }}
               </button>
               <button
                 :class="['view-btn', { active: viewMode === 'list' }]"
                 @click="handleViewModeChange('list')"
               >
-                <img :src="iconList" class="btn-icon" alt="" /> 列表
+                <img :src="iconList" class="btn-icon" alt="" /> {{ t('settings.list') }}
               </button>
             </div>
           </div>
@@ -824,10 +851,10 @@ onMounted(() => {
 
         <!-- 行为设置 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconLightBulb" class="section-icon" alt="" /> 行为</h3>
+          <h3 class="section-title"><img :src="iconLightBulb" class="section-icon" alt="" /> {{ t('settings.behavior') }}</h3>
 
           <div class="setting-item">
-            <div class="setting-label">开机自启动</div>
+            <div class="setting-label">{{ t('settings.autoStart') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -839,7 +866,7 @@ onMounted(() => {
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">显示隐藏文件</div>
+            <div class="setting-label">{{ t('settings.showHiddenFiles') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -851,7 +878,7 @@ onMounted(() => {
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">删除前确认</div>
+            <div class="setting-label">{{ t('settings.confirmBeforeDelete') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -865,10 +892,10 @@ onMounted(() => {
 
         <!-- 文件监控设置 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconOpenFolder" class="section-icon" alt="" /> 文件监控</h3>
+          <h3 class="section-title"><img :src="iconOpenFolder" class="section-icon" alt="" /> {{ t('settings.fileWatcher') }}</h3>
 
           <div class="setting-item">
-            <div class="setting-label">启用实时监控</div>
+            <div class="setting-label">{{ t('settings.enableRealtimeWatch') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -881,7 +908,7 @@ onMounted(() => {
 
           <div v-if="drawerStore.config.fileWatcher.enabled" class="sub-settings">
             <div class="setting-item column">
-              <div class="setting-label">监控文件夹（最多 {{ watchPathsStore.MAX_WATCH_PATHS }} 个）</div>
+              <div class="setting-label">{{ t('settings.watchFolders', { max: watchPathsStore.MAX_WATCH_PATHS }) }}</div>
 
               <!-- 所有路径列表（桌面 + 自定义，统一展示） -->
               <div
@@ -892,7 +919,7 @@ onMounted(() => {
                 <span class="watch-path-icon">{{ wp.builtin ? '🖥️' : '📁' }}</span>
                 <div class="watch-path-info">
                   <span class="watch-path-name">{{ watchPathsStore.getEntryLabel(wp) }}</span>
-                  <span v-if="wp.builtin" class="watch-path-badge">内置</span>
+                  <span v-if="wp.builtin" class="watch-path-badge">{{ t('settings.builtin') }}</span>
                   <span v-else class="watch-path-detail" :title="wp.path">{{ wp.path }}</span>
                 </div>
                 <label class="toggle-switch toggle-switch-sm">
@@ -909,7 +936,7 @@ onMounted(() => {
                   v-if="!wp.builtin"
                   class="watch-path-remove"
                   @click="handleRemoveWatchPath(wp.id)"
-                  title="移除"
+                  :title="t('common.remove')"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
@@ -928,11 +955,11 @@ onMounted(() => {
                   <line x1="12" y1="5" x2="12" y2="19"/>
                   <line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                添加文件夹
+                {{ t('settings.addFolder') }}
               </button>
 
               <div class="setting-hint">
-                最多同时监控 {{ watchPathsStore.MAX_WATCH_PATHS }} 个文件夹，至少保留 1 个启用
+                {{ t('settings.watchFolderHint', { max: watchPathsStore.MAX_WATCH_PATHS }) }}
               </div>
             </div>
           </div>
@@ -940,10 +967,10 @@ onMounted(() => {
 
         <!-- 抽屉触发设置 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconWindow" class="section-icon" alt="" /> 抽屉触发</h3>
+          <h3 class="section-title"><img :src="iconWindow" class="section-icon" alt="" /> {{ t('settings.drawerTrigger') }}</h3>
 
           <div class="setting-item">
-            <div class="setting-label">边缘触发</div>
+            <div class="setting-label">{{ t('settings.edgeTrigger') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -956,37 +983,37 @@ onMounted(() => {
 
           <div v-if="drawerStore.config.edgeTrigger.enabled" class="sub-settings">
             <div class="setting-item">
-              <div class="setting-label">触发边缘</div>
+              <div class="setting-label">{{ t('settings.triggerEdge') }}</div>
               <div class="side-selector">
                 <button
                   :class="['side-btn', { active: drawerStore.config.edgeTrigger.side === DrawerSide.Left }]"
                   @click="handleDrawerSideChange(DrawerSide.Left)"
                 >
-                  ⬅️ 左侧
+                  ⬅️ {{ t('settings.left') }}
                 </button>
                 <button
                   :class="['side-btn', { active: drawerStore.config.edgeTrigger.side === DrawerSide.Right }]"
                   @click="handleDrawerSideChange(DrawerSide.Right)"
                 >
-                  ➡️ 右侧
+                  ➡️ {{ t('settings.right') }}
                 </button>
                 <button
                   :class="['side-btn', { active: drawerStore.config.edgeTrigger.side === DrawerSide.Top }]"
                   @click="handleDrawerSideChange(DrawerSide.Top)"
                 >
-                  ⬆️ 顶部
+                  ⬆️ {{ t('settings.top') }}
                 </button>
                 <button
                   :class="['side-btn', { active: drawerStore.config.edgeTrigger.side === DrawerSide.Bottom }]"
                   @click="handleDrawerSideChange(DrawerSide.Bottom)"
                 >
-                  ⬇️ 底部
+                  ⬇️ {{ t('settings.bottom') }}
                 </button>
               </div>
             </div>
 
             <div class="setting-item">
-              <div class="setting-label">触发延迟 ({{ drawerStore.config.edgeTrigger.delayMs }}ms)</div>
+              <div class="setting-label">{{ t('settings.triggerDelay', { ms: drawerStore.config.edgeTrigger.delayMs }) }}</div>
               <input
                 type="range"
                 v-model.number="drawerStore.config.edgeTrigger.delayMs"
@@ -999,7 +1026,7 @@ onMounted(() => {
             </div>
 
             <div class="setting-item">
-              <div class="setting-label">预览大小 ({{ drawerStore.config.edgeTrigger.peekSize }}px)</div>
+              <div class="setting-label">{{ t('settings.peekSize', { px: drawerStore.config.edgeTrigger.peekSize }) }}</div>
               <input
                 type="range"
                 v-model.number="drawerStore.config.edgeTrigger.peekSize"
@@ -1013,7 +1040,7 @@ onMounted(() => {
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">全局快捷键</div>
+            <div class="setting-label">{{ t('settings.globalHotkey') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -1026,7 +1053,7 @@ onMounted(() => {
 
           <div v-if="drawerStore.config.hotkey.enabled" class="sub-settings">
             <div class="setting-item hotkey-setting">
-              <div class="setting-label">快捷键组合</div>
+              <div class="setting-label">{{ t('settings.hotkeyCombo') }}</div>
               <div class="hotkey-input-wrapper">
                 <button
                   v-if="!isCapturingHotkey"
@@ -1037,16 +1064,16 @@ onMounted(() => {
                 </button>
                 <div v-else class="hotkey-capture">
                   <div class="capture-display">
-                    {{ capturedKeys.length > 0 ? capturedKeys.join(' + ') : '按下快捷键...' }}
+                    {{ capturedKeys.length > 0 ? capturedKeys.join(' + ') : t('settings.pressHotkey') }}
                   </div>
-                  <button class="cancel-btn" @click="cancelCaptureHotkey">取消</button>
+                  <button class="cancel-btn" @click="cancelCaptureHotkey">{{ t('common.cancel') }}</button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">动画速度 ({{ drawerStore.config.animation.duration }}ms)</div>
+            <div class="setting-label">{{ t('settings.animationSpeed', { ms: drawerStore.config.animation.duration }) }}</div>
             <input
               type="range"
               v-model.number="drawerStore.config.animation.duration"
@@ -1059,31 +1086,31 @@ onMounted(() => {
           </div>
 
           <div class="setting-item auto-hide-setting">
-            <div class="setting-label">自动隐藏模式</div>
+            <div class="setting-label">{{ t('settings.autoHideMode') }}</div>
             <div class="auto-hide-modes">
               <button
                 :class="['mode-option-btn', { active: autoHideMode === 'none' }]"
                 @click="setAutoHideMode('none')"
               >
-                禁用
+                {{ t('settings.disable') }}
               </button>
               <button
                 :class="['mode-option-btn', { active: autoHideMode === 'mouse' }]"
                 @click="setAutoHideMode('mouse')"
               >
-                鼠标离开
+                {{ t('settings.mouseLeave') }}
               </button>
               <button
                 :class="['mode-option-btn', { active: autoHideMode === 'focus' }]"
                 @click="setAutoHideMode('focus')"
               >
-                窗口失焦
+                {{ t('settings.focusLost') }}
               </button>
             </div>
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">打开文件后隐藏</div>
+            <div class="setting-label">{{ t('settings.hideAfterOpen') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -1095,7 +1122,7 @@ onMounted(() => {
           </div>
 
           <div class="setting-item">
-            <div class="setting-label">全屏时禁用</div>
+            <div class="setting-label">{{ t('settings.disableFullscreen') }}</div>
             <label class="toggle-switch">
               <input
                 type="checkbox"
@@ -1107,38 +1134,38 @@ onMounted(() => {
           </div>
           
           <div class="setting-item window-adjust-setting">
-            <div class="setting-label">窗口位置</div>
+            <div class="setting-label">{{ t('settings.windowPosition') }}</div>
             <button class="adjust-window-btn" @click="startWindowAdjustment">
-              调整位置与大小
+              {{ t('settings.adjustPositionSize') }}
             </button>
           </div>
         </div>
 
         <!-- 数据管理 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconDatabaseManagement" class="section-icon" alt="" /> 数据管理</h3>
+          <h3 class="section-title"><img :src="iconDatabaseManagement" class="section-icon" alt="" /> {{ t('settings.dataManagement') }}</h3>
 
           <!-- 文件夹缓存管理 -->
           <div class="setting-item">
-            <div class="setting-label">文件夹缓存管理</div>
+            <div class="setting-label">{{ t('folderCache.title') }}</div>
             <button class="action-btn small-btn" @click="showCacheManager = true">
-              管理
+              {{ t('common.manage') }}
             </button>
           </div>
 
           <!-- 合并为一行两列 -->
           <div class="data-management-grid">
             <div class="setting-item column-item">
-              <div class="setting-label">清除全部缓存</div>
+              <div class="setting-label">{{ t('settings.clearAllCache') }}</div>
               <button class="action-btn danger small-btn" @click="handleClearCache">
-                执行
+                {{ t('common.execute') }}
               </button>
             </div>
 
             <div class="setting-item column-item">
-              <div class="setting-label">重置设置</div>
+              <div class="setting-label">{{ t('settings.resetSettings') }}</div>
               <button class="action-btn small-btn" @click="handleResetSettings">
-                执行
+                {{ t('common.execute') }}
               </button>
             </div>
           </div>
@@ -1146,24 +1173,24 @@ onMounted(() => {
 
         <!-- 关于 -->
         <div class="settings-section">
-          <h3 class="section-title"><img :src="iconInfo" class="section-icon" alt="" /> 关于</h3>
+          <h3 class="section-title"><img :src="iconInfo" class="section-icon" alt="" /> {{ t('settings.about') }}</h3>
 
           <div class="about-info">
             <img class="about-logo" :src="appLogoUrl" alt="Second Desk" />
             <div class="app-name">Second Desk</div>
-            <div class="app-version">版本 {{ appVersion }}</div>
-            <div class="app-desc">基于 Rust + Tauri 的高性能桌面文件管理工具</div>
+            <div class="app-version">{{ t('settings.version', { version: appVersion }) }}</div>
+            <div class="app-desc">{{ t('app.description') }}</div>
           </div>
 
           <!-- 检查更新按钮 -->
           <div class="setting-item">
-            <div class="setting-label">检查更新</div>
+            <div class="setting-label">{{ t('settings.checkUpdate') }}</div>
             <button
               class="action-btn small-btn"
               @click="handleCheckForUpdates"
               :disabled="updaterStore.checkingUpdate"
             >
-              {{ updaterStore.checkingUpdate ? '检查中...' : '立即检查' }}
+              {{ updaterStore.checkingUpdate ? t('settings.checking') : t('settings.checkNow') }}
             </button>
           </div>
         </div>

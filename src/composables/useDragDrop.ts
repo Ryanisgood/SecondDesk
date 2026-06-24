@@ -11,6 +11,7 @@ import { getItemPath } from '../types/drag'
 import type { DisplayItem } from '../stores/files'
 import { useFileStore } from '../stores/files'
 import { useDialog } from './useDialog'
+import { t } from '../i18n'
 
 // 初始状态
 function createInitialState(): DragState {
@@ -391,7 +392,7 @@ export function useDragDrop(options: DragDropOptions = {}) {
       options.onRealMove?.([sourcePath], targetDir)
     } catch (error) {
       console.error('移动文件失败：', error)
-      await dialog.error(`移动文件失败：${error}`)
+      await dialog.error(t('error.moveFile', { error }))
     }
   }
 

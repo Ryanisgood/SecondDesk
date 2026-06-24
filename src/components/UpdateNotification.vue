@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useUpdaterStore } from '../stores/updater'
+import { useI18n } from '../i18n'
 
 const updaterStore = useUpdaterStore()
+const { t } = useI18n()
 
 const handleClick = () => {
   updaterStore.showUpdateDialog()
@@ -14,12 +16,12 @@ const handleClick = () => {
       v-if="updaterStore.showNotification"
       class="update-notification no-drag"
       @click="handleClick"
-      title="有可用更新"
+      :title="t('update.available')"
     >
       <svg class="update-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 19V5M5 12l7-7 7 7"/>
       </svg>
-      <span class="update-badge">新版本</span>
+      <span class="update-badge">{{ t('update.newVersion') }}</span>
     </button>
   </Transition>
 </template>

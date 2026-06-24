@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import type { SortMode } from '../stores/files'
 import { computeMenuPosition } from '../utils/menuPosition'
 import { getIconPath } from '../utils/iconHelper'
+import { useI18n } from '../i18n'
 
 // 图标路径
 const iconRefresh = getIconPath('refresh')
@@ -18,6 +19,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'refresh'): void
@@ -96,31 +98,31 @@ function closeAfter(fn: () => void) {
   >
     <button class="menu-item" @click="closeAfter(() => emit('refresh'))">
       <img :src="iconRefresh" class="menu-icon" alt="" />
-      <span>刷新</span>
+      <span>{{ t('common.refresh') }}</span>
     </button>
 
     <div class="menu-divider"></div>
 
     <button class="menu-item" @click="closeAfter(() => emit('newFile'))">
       <img :src="iconGoogleDocs" class="menu-icon" alt="" />
-      <span>新建文件…</span>
+      <span>{{ t('background.newFile') }}</span>
     </button>
 
     <button class="menu-item" @click="closeAfter(() => emit('newFolder'))">
       <img :src="iconOpenFolder" class="menu-icon" alt="" />
-      <span>新建文件夹…</span>
+      <span>{{ t('background.newFolder') }}</span>
     </button>
 
     <div class="menu-divider"></div>
 
-    <div class="menu-section-title">排序方式</div>
+    <div class="menu-section-title">{{ t('background.sortBy') }}</div>
     <button
       class="menu-item"
       :class="{ active: props.sortMode === 'manual' }"
       @click="closeAfter(() => emit('setSortMode', 'manual'))"
     >
       <span class="menu-icon-text">↕️</span>
-      <span>拖拽排序</span>
+      <span>{{ t('background.sortManual') }}</span>
     </button>
     <button
       class="menu-item"
@@ -128,7 +130,7 @@ function closeAfter(fn: () => void) {
       @click="closeAfter(() => emit('setSortMode', 'nameAsc'))"
     >
       <span class="menu-icon-text">🔤</span>
-      <span>名称（A → Z）</span>
+      <span>{{ t('background.sortNameAsc') }}</span>
     </button>
     <button
       class="menu-item"
@@ -136,7 +138,7 @@ function closeAfter(fn: () => void) {
       @click="closeAfter(() => emit('setSortMode', 'nameDesc'))"
     >
       <span class="menu-icon-text">🔡</span>
-      <span>名称（Z → A）</span>
+      <span>{{ t('background.sortNameDesc') }}</span>
     </button>
     <button
       class="menu-item"
@@ -144,7 +146,7 @@ function closeAfter(fn: () => void) {
       @click="closeAfter(() => emit('setSortMode', 'typeAsc'))"
     >
       <img :src="iconTags" class="menu-icon" alt="" />
-      <span>类型</span>
+      <span>{{ t('background.sortType') }}</span>
     </button>
 
     <div class="menu-divider"></div>
@@ -155,7 +157,7 @@ function closeAfter(fn: () => void) {
       @click="closeAfter(() => emit('undoDelete'))"
     >
       <span class="menu-icon-text">↩️</span>
-      <span>撤销删除</span>
+      <span>{{ t('background.undoDelete') }}</span>
     </button>
   </div>
 </template>

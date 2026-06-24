@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import type { FileItem } from '../stores/files'
+import { useI18n } from '../i18n'
 
 interface Props {
   file: FileItem | null
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const newName = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const errorMessage = ref('')
+const { t } = useI18n()
 
 watch(() => props.file, (file) => {
   if (file) {
@@ -39,7 +41,7 @@ function handleConfirm() {
   const trimmedName = newName.value.trim()
 
   if (!trimmedName) {
-    errorMessage.value = '文件名不能为空'
+    errorMessage.value = t('rename.fileNameRequired')
     return
   }
 
@@ -51,7 +53,7 @@ function handleConfirm() {
   // 检查文件名是否包含非法字符
   const invalidChars = /[<>:"/\\|?*]/
   if (invalidChars.test(trimmedName)) {
-    errorMessage.value = '文件名不能包含以下字符: < > : " / \\ | ? *'
+    errorMessage.value = t('rename.invalidChars')
     return
   }
 
@@ -70,10 +72,10 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
   <div v-if="file" class="modal-overlay" @click.self="emit('close')">
     <div class="modal">
-      <h3 class="modal-title">重命名</h3>
+      <h3 class="modal-title">{{ t('rename.title') }}</h3>
 
       <div class="form-row">
-        <label class="label">新文件名</label>
+        <label class="label">{{ t('rename.newFileName') }}</label>
         <input
           ref="inputRef"
           v-model="newName"
@@ -86,8 +88,8 @@ function handleKeydown(event: KeyboardEvent) {
       <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
 
       <div class="modal-actions">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" @click="handleConfirm">确定</button>
+        <button class="btn" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn primary" @click="handleConfirm">{{ t('common.confirm') }}</button>
       </div>
     </div>
   </div>

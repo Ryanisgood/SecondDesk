@@ -17,6 +17,7 @@ import VirtualFolderIcon from './VirtualFolderIcon.vue'
 import VirtualFolderModal from './VirtualFolderModal.vue'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
+import { useI18n } from '../i18n'
 
 // 图标路径
 const iconEmpty = getIconPath('empty')
@@ -34,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 const fileStore = useFileStore()
 const batchStore = useBatchSelectStore()
 const dialog = useDialog()
+const { t } = useI18n()
 
 // 当前选中的单个项目（非批量模式下的视觉选中）
 const selectedItemId = ref<string | null>(null)
@@ -360,13 +362,16 @@ function handleContextMenuRename(file: FileItem) {
 }
 
 async function handleContextMenuDelete(file: FileItem) {
-  const confirmDelete = await dialog.confirmDanger(`确定要将「${file.fileName}」移到回收站吗？`, { title: '删除文件' })
+  const confirmDelete = await dialog.confirmDanger(
+    t('context.deleteFileConfirm', { name: file.fileName }),
+    { title: t('context.deleteFileTitle') }
+  )
   if (!confirmDelete) return
 
   try {
     await fileStore.deleteFile(file.filePath, true)
   } catch (error) {
-    await dialog.error(`删除失败：${error}`)
+    await dialog.error(t('context.deleteFailed', { error }))
   }
 }
 
@@ -378,7 +383,7 @@ async function handleContextMenuProperties(file: FileItem) {
   try {
     await invoke('show_file_properties', { filePath: file.filePath })
   } catch (error) {
-    await dialog.error(`打开属性对话框失败：${error}`)
+    await dialog.error(t('context.propertiesFailed', { error }))
   }
 }
 
@@ -402,8 +407,8 @@ function handleVFContextMenuRename(folder: VirtualFolder) {
 
 async function handleVFContextMenuDelete(folder: VirtualFolder) {
   const confirmDelete = await dialog.confirmDanger(
-    `确定要删除虚拟分组「${folder.name}」吗？\n（文件本身不会被删除，只是解除分组）`,
-    { title: '删除虚拟分组' }
+    t('virtualFolder.deleteConfirm', { name: folder.name }),
+    { title: t('virtualFolder.deleteTitle') }
   )
   if (!confirmDelete) {
     closeVirtualFolderContextMenu()
@@ -433,7 +438,7 @@ async function handleNewItemConfirm(name: string) {
     await fileStore.createFile(parentPath, name, newItemIsDir.value)
     newItemDialogVisible.value = false
   } catch (error) {
-    await dialog.error(`创建失败：${error}`)
+    await dialog.error(t('error.createFile', { error }))
   }
 }
 
@@ -465,7 +470,7 @@ async function handleRenameConfirm(newName: string) {
     await fileStore.renameFile(renameDialogFile.value.filePath, newName)
     closeRenameDialog()
   } catch (error) {
-    await dialog.error(`重命名失败：${error}`)
+    await dialog.error(t('rename.failed', { error }))
   }
 }
 
@@ -482,7 +487,7 @@ function handleVFRenameConfirm(newName: string) {
   if (success) {
     closeVFRenameDialog()
   } else {
-    dialog.error('重命名失败')
+    dialog.error(t('rename.failed', { error: '' }).trim())
   }
 }
 
@@ -699,12 +704,12 @@ function getDragTargetClass(item: DisplayItem): string {
   >
     <div v-if="fileStore.loading" class="loading">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>{{ t('common.loading') }}</p>
     </div>
 
     <div v-else-if="displayItems.length === 0" class="empty">
       <img :src="iconEmpty" class="empty-icon" alt="" />
-      <p>没有找到文件</p>
+      <p>{{ t('fileGrid.empty') }}</p>
     </div>
 
     <div v-else ref="fileGridRef" :class="['file-grid', props.viewMode, `size-${props.iconSize}`]">
@@ -796,7 +801,7 @@ function getDragTargetClass(item: DisplayItem): string {
 
           <!-- 移动警告提示 -->
           <div v-if="isDragTarget(item) && dragState.showMoveWarning" class="move-warning-tooltip">
-            松开将移动到该文件夹
+            {{ t('fileGrid.moveToFolderHint') }}
           </div>
         </div>
       </template>
@@ -814,12 +819,12 @@ function getDragTargetClass(item: DisplayItem): string {
     </div>
 
     <div class="file-count">
-      共 {{ fileStore.fileCount }} 个项目
+      {{ t('fileGrid.count', { count: fileStore.fileCount }) }}
       <span v-if="fileStore.favoriteFiles.length > 0">
-        （⭐ {{ fileStore.favoriteFiles.length }} 个收藏）
+        {{ t('fileGrid.favoriteCount', { count: fileStore.favoriteFiles.length }) }}
       </span>
       <span v-if="fileStore.virtualFolders.length > 0">
-        （🔲 {{ fileStore.virtualFolders.length }} 个分组）
+        {{ t('fileGrid.groupCount', { count: fileStore.virtualFolders.length }) }}
       </span>
     </div>
 

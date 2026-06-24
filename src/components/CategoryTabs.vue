@@ -10,6 +10,7 @@ import {
   getFileTypeIconUrl,
 } from '../stores/files'
 import { useDialog } from '../composables/useDialog'
+import { useI18n } from '../i18n'
 
 const emit = defineEmits<{
   (e: 'auto-hide-suspend'): void
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 const fileStore = useFileStore()
 const dialog = useDialog()
+const { t } = useI18n()
 
 const categories = computed<DesktopCategory[]>(() => fileStore.categories)
 const activeCategoryId = computed(() => fileStore.activeCategoryId)
@@ -141,12 +143,12 @@ function saveCategory() {
 
   const name = categoryName.value.trim()
   if (!name) {
-    formError.value = '请输入分类名称'
+    formError.value = t('category.errorNameRequired')
     return
   }
 
   if (selectedFilePaths.value.length === 0) {
-    formError.value = '请选择至少一个文件'
+    formError.value = t('category.errorSelectFile')
     return
   }
 
@@ -157,7 +159,7 @@ function saveCategory() {
     : fileStore.createCustomCategory(name, rule)
 
   if (!ok) {
-    formError.value = '保存失败，请检查输入'
+    formError.value = t('category.errorSaveFailed')
     return
   }
 
@@ -199,7 +201,7 @@ async function deleteCategory(cat: DesktopCategory, event: MouseEvent) {
   event.stopPropagation()
   if (cat.kind !== 'custom') return
 
-  const ok = await dialog.confirmDanger(`确定要删除分类「${cat.name}」吗？`, { title: '删除分类' })
+  const ok = await dialog.confirmDanger(t('category.deleteConfirm', { name: cat.name }), { title: t('category.deleteTitle') })
   if (!ok) return
 
   fileStore.deleteCustomCategory(cat.id)
@@ -364,7 +366,7 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
           <button
             v-if="cat.kind === 'custom'"
             class="delete-btn"
-            title="删除分类"
+            :title="t('category.deleteTitle')"
             @click="deleteCategory(cat, $event)"
           >
             ×
@@ -375,20 +377,20 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
       <div class="chrome-tab add-btn" @click="openCreateModal">
         <div class="tab-content">
           <span class="icon">＋</span>
-          <span class="name">新建分类</span>
+          <span class="name">{{ t('category.new') }}</span>
         </div>
       </div>
     </div>
 
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal modal-compact">
-        <h3 class="modal-title">{{ editingCategoryId ? '编辑分类' : '新建分类' }}</h3>
+        <h3 class="modal-title">{{ editingCategoryId ? t('category.edit') : t('category.new') }}</h3>
 
         <!-- 预设分类选择（可折叠） -->
         <div v-if="!editingCategoryId" class="form-row">
           <label class="label preset-label" @click="presetCollapsed = !presetCollapsed">
             <span class="collapse-arrow" :class="{ collapsed: presetCollapsed }">▼</span>
-            预设分类（可选）
+            {{ t('category.presetOptional') }}
           </label>
           <div v-show="!presetCollapsed" class="preset-categories">
             <label
@@ -403,32 +405,32 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
               />
               <span v-if="isEmoji(preset.icon)" class="preset-icon">{{ preset.icon }}</span>
               <img v-else :src="getFileTypeIconUrl(preset.icon)" class="preset-icon-img" alt="" />
-              <span class="preset-name">{{ preset.name }}</span>
-              <span class="preset-hint">自动聚合</span>
+              <span class="preset-name">{{ t(preset.name as any) }}</span>
+              <span class="preset-hint">{{ t('category.autoGroup') }}</span>
             </label>
           </div>
         </div>
 
         <div class="form-row">
-          <label class="label">分类名称</label>
+          <label class="label">{{ t('category.name') }}</label>
           <input
             v-model="categoryName"
             class="input"
             type="text"
-            placeholder="例如：工作/学习/常用"
+            :placeholder="t('category.namePlaceholder')"
             maxlength="20"
           />
         </div>
 
         <!-- 文件选择摘要 -->
         <div class="form-row">
-          <label class="label">选择文件</label>
+          <label class="label">{{ t('category.selectFiles') }}</label>
           <div class="file-selection-summary">
             <span class="selected-count">
-              {{ selectedFilePaths.length ? `已选择 ${selectedFilePaths.length} 个文件` : '未选择文件' }}
+              {{ selectedFilePaths.length ? t('common.selectedCount', { count: selectedFilePaths.length }) : t('category.noFilesSelected') }}
             </span>
             <button class="btn primary-outline" @click="openFilePicker">
-              {{ selectedFilePaths.length ? '重新选择' : '选择文件' }}
+              {{ selectedFilePaths.length ? t('category.chooseAgain') : t('category.chooseFiles') }}
             </button>
           </div>
           <!-- 已选文件名预览 -->
@@ -437,7 +439,7 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
               {{ getFileName(path) }}
             </span>
             <span v-if="selectedFilePaths.length > 3" class="preview-more">
-              +{{ selectedFilePaths.length - 3 }} 个
+              {{ t('category.moreFiles', { count: selectedFilePaths.length - 3 }) }}
             </span>
           </div>
         </div>
@@ -445,8 +447,8 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
         <div v-if="formError" class="error">{{ formError }}</div>
 
         <div class="modal-actions">
-          <button class="btn" @click="closeModal">取消</button>
-          <button class="btn primary" @click="saveCategory">{{ editingCategoryId ? '保存' : '创建' }}</button>
+          <button class="btn" @click="closeModal">{{ t('common.cancel') }}</button>
+          <button class="btn primary" @click="saveCategory">{{ editingCategoryId ? t('common.save') : t('common.create') }}</button>
         </div>
       </div>
     </div>
@@ -456,20 +458,20 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
       <div v-if="showFilePicker" class="picker-overlay" @click.self="cancelFilePicker">
         <div class="picker-modal">
           <div class="picker-header">
-            <h3 class="picker-title">选择文件</h3>
-            <span class="picker-count">已选 {{ tempSelectedPaths.length }}</span>
+            <h3 class="picker-title">{{ t('category.filePickerTitle') }}</h3>
+            <span class="picker-count">{{ t('category.pickerSelected', { count: tempSelectedPaths.length }) }}</span>
           </div>
 
           <div class="picker-toolbar">
             <select v-model="fileTypeFilter" class="input file-type-select">
-              <option value="">全部类型</option>
+              <option value="">{{ t('category.allTypes') }}</option>
               <option v-for="opt in fileTypeOptions" :key="opt.fType" :value="opt.fType">
                 {{ isEmoji(opt.icon) ? opt.icon : '' }} {{ opt.name }}
               </option>
             </select>
-            <input v-model="fileSearch" class="input file-search" type="text" placeholder="筛选文件..." />
-            <button class="btn" @click="selectAllTemp">全选</button>
-            <button class="btn" @click="clearTempSelection">清空</button>
+            <input v-model="fileSearch" class="input file-search" type="text" :placeholder="t('category.filterFiles')" />
+            <button class="btn" @click="selectAllTemp">{{ t('category.selectAll') }}</button>
+            <button class="btn" @click="clearTempSelection">{{ t('category.clearSelection') }}</button>
           </div>
 
           <div class="picker-list">
@@ -482,9 +484,9 @@ function handleCategoryDropForReorder(cat: DesktopCategory, event: DragEvent) {
           </div>
 
           <div class="picker-actions">
-            <button class="btn" @click="cancelFilePicker">取消</button>
+            <button class="btn" @click="cancelFilePicker">{{ t('common.cancel') }}</button>
             <button class="btn primary" @click="confirmFilePicker">
-              确定（{{ tempSelectedPaths.length }}）
+              {{ t('category.confirmWithCount', { count: tempSelectedPaths.length }) }}
             </button>
           </div>
         </div>

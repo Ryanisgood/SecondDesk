@@ -2,9 +2,11 @@
 import { computed } from 'vue'
 import { useBatchSelectStore } from '../stores/batchSelect'
 import { useFileStore } from '../stores/files'
+import { useI18n } from '../i18n'
 
 const batchStore = useBatchSelectStore()
 const fileStore = useFileStore()
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'open-target-picker'): void
@@ -93,23 +95,23 @@ const canMoveToVirtualFolder = computed(() => {
     <Transition name="slide-up">
       <div v-if="batchStore.isActive" class="batch-action-bar">
         <div class="selection-info">
-          <span class="count">已选择 {{ batchStore.selectedCount }} 项</span>
+          <span class="count">{{ t('common.selectedCount', { count: batchStore.selectedCount }) }}</span>
         </div>
 
         <div class="actions">
-          <button class="action-btn" @click="handleSelectAll" title="全选">
+          <button class="action-btn" @click="handleSelectAll" :title="t('batch.selectAll')">
             <span class="icon">&#9745;</span>
-            <span class="label">全选</span>
+            <span class="label">{{ t('batch.selectAll') }}</span>
           </button>
 
-          <button class="action-btn primary" @click="handleMoveTo" title="移动到...">
+          <button class="action-btn primary" @click="handleMoveTo" :title="t('batch.moveTo')">
             <span class="icon">&#128203;</span>
-            <span class="label">移动到...</span>
+            <span class="label">{{ t('batch.moveTo') }}</span>
           </button>
 
-          <button class="action-btn" @click="$emit('create-category')" title="创建分类">
+          <button class="action-btn" @click="$emit('create-category')" :title="t('batch.createCategory')">
             <span class="icon">&#127991;</span>
-            <span class="label">创建分类</span>
+            <span class="label">{{ t('batch.createCategory') }}</span>
           </button>
 
           <!-- 从分类移除（仅在自定义 manual 分类中显示） -->
@@ -117,10 +119,10 @@ const canMoveToVirtualFolder = computed(() => {
             v-if="isCustomManualCategory"
             class="action-btn warning"
             @click="handleRemoveFromCategory"
-            title="从当前分类移除"
+            :title="t('batch.removeFromCurrentCategory')"
           >
             <span class="icon">&#10006;</span>
-            <span class="label">从分类移除</span>
+            <span class="label">{{ t('batch.removeFromCategory') }}</span>
           </button>
 
           <!-- 合并分组（隐藏条件：选中虚拟分组或文件已在虚拟分组中） -->
@@ -129,15 +131,15 @@ const canMoveToVirtualFolder = computed(() => {
             class="action-btn"
             @click="handleCreateVirtualFolder"
             :disabled="batchStore.selectedCount < 2"
-            title="创建虚拟分组（需要至少2个项目）"
+            :title="t('batch.createVirtualFolderTitle')"
           >
             <span class="icon">&#128193;</span>
-            <span class="label">合并分组</span>
+            <span class="label">{{ t('batch.mergeGroup') }}</span>
           </button>
 
-          <button class="action-btn cancel" @click="handleCancel" title="取消">
+          <button class="action-btn cancel" @click="handleCancel" :title="t('common.cancel')">
             <span class="icon">&#10005;</span>
-            <span class="label">取消</span>
+            <span class="label">{{ t('common.cancel') }}</span>
           </button>
         </div>
       </div>

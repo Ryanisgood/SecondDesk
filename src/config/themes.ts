@@ -28,28 +28,28 @@ export interface ColorTheme {
 
 export const GLASS_PRESETS: Record<string, GlassStyle> = {
   clear: {
-    name: '清透水晶', // Crystal Clear
+    get name() { return t('theme.glass.clear') },
     blur: 40,
     saturation: 180,
     opacity: 0.65,
     opacitySecondary: 0.4
   },
   standard: {
-    name: '标准磨砂', // Default Frost
+    get name() { return t('theme.glass.standard') },
     blur: 24,
     saturation: 140,
     opacity: 0.88,
     opacitySecondary: 0.7
   },
   deep: {
-    name: '深度模糊', // Deep Glass
+    get name() { return t('theme.glass.deep') },
     blur: 50,
     saturation: 160,
     opacity: 0.92,
     opacitySecondary: 0.8
   },
   minimal: {
-    name: '纯净简约', // Solid Flat
+    get name() { return t('theme.glass.minimal') },
     blur: 0,
     saturation: 100,
     opacity: 1.0,
@@ -60,7 +60,7 @@ export const GLASS_PRESETS: Record<string, GlassStyle> = {
 export const COLOR_THEMES: ColorTheme[] = [
   {
     id: 'blue',
-    name: '沉稳蓝', // Default Pro
+    get name() { return t('theme.color.blue') },
     light: {
       primary: '#3B82F6',
       primaryRgb: '59, 130, 246',
@@ -86,7 +86,7 @@ export const COLOR_THEMES: ColorTheme[] = [
   },
   {
     id: 'mist',
-    name: '迷雾灰', // Mist Blue
+    get name() { return t('theme.color.gray') },
     light: {
       primary: '#64748B',
       primaryRgb: '100, 116, 139',
@@ -112,7 +112,7 @@ export const COLOR_THEMES: ColorTheme[] = [
   },
   {
     id: 'warm',
-    name: '暖陶白', // Warm Ceramic
+    get name() { return t('theme.color.warm') },
     light: {
       primary: '#D97706',
       primaryRgb: '217, 119, 6',
@@ -138,7 +138,7 @@ export const COLOR_THEMES: ColorTheme[] = [
   },
   {
     id: 'mint',
-    name: '薄荷绿', // Soft Mint
+    get name() { return t('theme.color.green') },
     light: {
       primary: '#10B981',
       primaryRgb: '16, 185, 129',
@@ -164,7 +164,7 @@ export const COLOR_THEMES: ColorTheme[] = [
   },
   {
     id: 'neon',
-    name: '赛博紫', // Neon Glass
+    get name() { return t('theme.color.purple') },
     light: {
       primary: '#8B5CF6',
       primaryRgb: '139, 92, 246',
@@ -190,7 +190,7 @@ export const COLOR_THEMES: ColorTheme[] = [
   },
   {
     id: 'aurora',
-    name: '极光粉', // Glass Aurora
+    get name() { return t('theme.color.pink') },
     light: {
       primary: '#EC4899',
       primaryRgb: '236, 72, 153',
@@ -215,3 +215,4 @@ export const COLOR_THEMES: ColorTheme[] = [
     }
   }
 ]
+import { t } from '../i18n'

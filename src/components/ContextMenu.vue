@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import type { FileItem } from '../stores/files'
 import { computeMenuPosition } from '../utils/menuPosition'
 import { getIconPath } from '../utils/iconHelper'
+import { useI18n } from '../i18n'
 
 // 图标路径
 const iconOpenFolder = getIconPath('open-folder')
@@ -21,6 +22,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   isCustomManualCategory: false
 })
+const { t } = useI18n()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'open', file: FileItem): void
@@ -129,44 +131,44 @@ function handleMenuClick(action: string) {
   >
     <button class="menu-item" @click="handleMenuClick('open')">
       <img :src="iconOpenFolder" class="menu-icon" alt="" />
-      <span>打开</span>
+      <span>{{ t('common.open') }}</span>
     </button>
 
     <button class="menu-item" @click="handleMenuClick('showInExplorer')">
       <img :src="iconLocation" class="menu-icon" alt="" />
-      <span>在资源管理器中显示</span>
+      <span>{{ t('context.showInExplorer') }}</span>
     </button>
 
     <div class="menu-divider"></div>
 
     <button class="menu-item" @click="handleMenuClick('toggleFavorite')">
       <span class="menu-icon-text">{{ file.isFavorite ? '⭐' : '☆' }}</span>
-      <span>{{ file.isFavorite ? '取消收藏' : '添加到收藏' }}</span>
+      <span>{{ file.isFavorite ? t('context.removeFavorite') : t('context.addFavorite') }}</span>
     </button>
 
     <!-- 从分类移除（仅在自定义 manual 分类中显示） -->
     <button v-if="props.isCustomManualCategory" class="menu-item warning" @click="handleMenuClick('removeFromCategory')">
       <span class="menu-icon-text">&#10006;</span>
-      <span>从分类移除</span>
+      <span>{{ t('batch.removeFromCategory') }}</span>
     </button>
 
     <div class="menu-divider"></div>
 
     <button class="menu-item" @click="handleMenuClick('rename')">
       <img :src="iconPencil" class="menu-icon" alt="" />
-      <span>重命名</span>
+      <span>{{ t('common.rename') }}</span>
     </button>
 
     <button class="menu-item danger" @click="handleMenuClick('delete')">
       <img :src="iconDelete" class="menu-icon" alt="" />
-      <span>移到回收站</span>
+      <span>{{ t('context.moveToRecycleBin') }}</span>
     </button>
 
     <div class="menu-divider"></div>
 
     <button class="menu-item" @click="handleMenuClick('properties')">
       <img :src="iconInfo" class="menu-icon" alt="" />
-      <span>属性</span>
+      <span>{{ t('common.properties') }}</span>
     </button>
   </div>
 </template>

@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { t } from '../i18n'
 
 export type DialogType = 'confirm' | 'alert' | 'info' | 'error' | 'success'
 
@@ -29,8 +30,8 @@ const dialogState = reactive<DialogState>({
   type: 'confirm',
   title: '',
   message: '',
-  confirmText: '确定',
-  cancelText: '取消',
+  confirmText: t('common.confirm'),
+  cancelText: t('common.cancel'),
   showCancel: true,
   dangerous: false,
   resolve: null
@@ -43,8 +44,8 @@ function showDialog(options: DialogOptions): Promise<boolean> {
     dialogState.type = options.type ?? 'confirm'
     dialogState.title = options.title ?? getDefaultTitle(options.type ?? 'confirm')
     dialogState.message = options.message
-    dialogState.confirmText = options.confirmText ?? '确定'
-    dialogState.cancelText = options.cancelText ?? '取消'
+    dialogState.confirmText = options.confirmText ?? t('common.confirm')
+    dialogState.cancelText = options.cancelText ?? t('common.cancel')
     dialogState.showCancel = options.showCancel ?? (options.type === 'confirm')
     dialogState.dangerous = options.dangerous ?? false
     dialogState.resolve = resolve
@@ -53,12 +54,12 @@ function showDialog(options: DialogOptions): Promise<boolean> {
 
 function getDefaultTitle(type: DialogType): string {
   switch (type) {
-    case 'confirm': return '确认'
-    case 'alert': return '提示'
-    case 'info': return '信息'
-    case 'error': return '错误'
-    case 'success': return '成功'
-    default: return '提示'
+    case 'confirm': return t('dialog.default.confirm')
+    case 'alert': return t('dialog.default.alert')
+    case 'info': return t('dialog.default.info')
+    case 'error': return t('dialog.default.error')
+    case 'success': return t('dialog.default.success')
+    default: return t('dialog.default.alert')
   }
 }
 
@@ -95,10 +96,10 @@ export function useDialog() {
 
     // 错误对话框
     error: (message: string, options?: Partial<Omit<DialogOptions, 'message' | 'type'>>) =>
-      showDialog({ ...options, message, type: 'error', showCancel: false, title: options?.title ?? '错误' }),
+      showDialog({ ...options, message, type: 'error', showCancel: false, title: options?.title ?? t('dialog.default.error') }),
 
     // 成功对话框
     success: (message: string, options?: Partial<Omit<DialogOptions, 'message' | 'type'>>) =>
-      showDialog({ ...options, message, type: 'success', showCancel: false, title: options?.title ?? '成功' }),
+      showDialog({ ...options, message, type: 'success', showCancel: false, title: options?.title ?? t('dialog.default.success') }),
   }
 }

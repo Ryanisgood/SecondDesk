@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import appLogoUrl from '../assets/app-logo.png'
+import { useI18n } from '../i18n'
 
 const appWindow = getCurrentWindow()
 const isMaximized = ref(false)
+const { t } = useI18n()
 
 onMounted(async () => {
   // 检查初始最大化状态
@@ -37,13 +39,13 @@ async function closeWindow() {
     </div>
 
     <div class="titlebar-controls">
-      <button class="titlebar-btn minimize" @click="minimizeWindow" title="最小化">
+      <button class="titlebar-btn minimize" @click="minimizeWindow" :title="t('titlebar.minimize')">
         <svg width="12" height="12" viewBox="0 0 12 12">
           <path d="M0 6h12" stroke="currentColor" stroke-width="1" />
         </svg>
       </button>
 
-      <button class="titlebar-btn maximize" @click="toggleMaximize" :title="isMaximized ? '还原' : '最大化'">
+      <button class="titlebar-btn maximize" @click="toggleMaximize" :title="isMaximized ? t('titlebar.restore') : t('titlebar.maximize')">
         <svg v-if="!isMaximized" width="12" height="12" viewBox="0 0 12 12">
           <rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1" />
         </svg>
@@ -53,7 +55,7 @@ async function closeWindow() {
         </svg>
       </button>
 
-      <button class="titlebar-btn close" @click="closeWindow" title="关闭">
+      <button class="titlebar-btn close" @click="closeWindow" :title="t('titlebar.close')">
         <svg width="12" height="12" viewBox="0 0 12 12">
           <path d="M0 0l12 12M12 0L0 12" stroke="currentColor" stroke-width="1" />
         </svg>

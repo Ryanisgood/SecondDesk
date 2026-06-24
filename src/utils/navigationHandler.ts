@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { detectURL } from './urlDetector'
 import { isPath, isSystemFolderShortcut, getSystemFolderName } from './searchParser'
+import { t } from '../i18n'
 
 /**
  * 移除字符串首尾的引号（单引号或双引号）
@@ -23,7 +24,7 @@ export async function handleNavigation(input: string): Promise<void> {
   const trimmed = input.trim()
 
   if (!trimmed) {
-    throw new Error('导航输入不能为空')
+    throw new Error(t('error.navigationEmpty'))
   }
 
   // 移除引号（如果有）
@@ -52,7 +53,7 @@ export async function handleNavigation(input: string): Promise<void> {
   }
 
   // 如果都不是，抛出错误
-  throw new Error('无法识别的导航目标')
+  throw new Error(t('error.navigationUnknown'))
 }
 
 /**
@@ -63,7 +64,7 @@ async function openURL(url: string): Promise<void> {
     await invoke('open_url', { url })
   } catch (error) {
     console.error('打开 URL 失败:', error)
-    throw new Error(`无法打开 URL: ${url}`)
+    throw new Error(t('error.openUrl', { url }))
   }
 }
 
@@ -72,13 +73,13 @@ async function openURL(url: string): Promise<void> {
  */
 function getFolderDisplayName(folderName: string): string {
   const nameMap: Record<string, string> = {
-    'Desktop': '桌面',
-    'Downloads': '下载',
-    'Documents': '文档',
-    'Pictures': '图片',
-    'Music': '音乐',
-    'Videos': '视频',
-    'UserProfile': '用户',
+    'Desktop': t('folder.desktop'),
+    'Downloads': t('folder.downloads'),
+    'Documents': t('folder.documents'),
+    'Pictures': t('folder.pictures'),
+    'Music': t('folder.music'),
+    'Videos': t('folder.videos'),
+    'UserProfile': t('folder.user'),
   }
   return nameMap[folderName] || folderName
 }
@@ -92,7 +93,7 @@ async function navigateToSystemFolder(folderName: string): Promise<void> {
     const path = await invoke<string>('get_known_folder', { folder: folderName })
 
     if (!path) {
-      throw new Error(`无法获取${getFolderDisplayName(folderName)}路径`)
+      throw new Error(t('error.systemFolderPath', { name: getFolderDisplayName(folderName) }))
     }
 
     // 在 Windows 资源管理器中打开文件夹
@@ -105,7 +106,7 @@ async function navigateToSystemFolder(folderName: string): Promise<void> {
     const originalError = error instanceof Error ? error.message : String(error)
 
     throw new Error(
-      `无法打开${displayName}文件夹。请检查系统权限设置。\n详细错误: ${originalError}`
+      t('error.openSystemFolder', { name: displayName, error: originalError })
     )
   }
 }
@@ -119,7 +120,7 @@ async function navigateToPath(path: string): Promise<void> {
     await invoke('open_file', { filePath: path })
   } catch (error) {
     console.error('导航到路径失败:', error)
-    throw new Error(`无法打开路径: ${path}`)
+    throw new Error(t('error.openPath', { path }))
   }
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useWatchPathsStore } from '../stores/watchPaths'
+import { useI18n } from '../i18n'
 
 const emit = defineEmits<{
   (e: 'path-changed', pathId: string): void
@@ -8,6 +9,7 @@ const emit = defineEmits<{
 }>()
 
 const watchPathsStore = useWatchPathsStore()
+const { t } = useI18n()
 const isOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
@@ -79,7 +81,7 @@ onUnmounted(() => {
             @click="selectView(watchPathsStore.ALL_VIEW_ID)"
           >
             <span class="item-icon">🌐</span>
-            <span class="item-label">所有文件夹</span>
+            <span class="item-label">{{ t('path.allFolders') }}</span>
             <svg v-if="watchPathsStore.isAllView" class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
@@ -92,7 +94,7 @@ onUnmounted(() => {
         <!-- 管理路径 -->
         <button class="dropdown-item manage-item" @click="openSettings">
           <span class="item-icon">⚙️</span>
-          <span class="item-label">管理路径...</span>
+          <span class="item-label">{{ t('path.managePaths') }}</span>
         </button>
       </div>
     </Transition>

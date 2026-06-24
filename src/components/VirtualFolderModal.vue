@@ -7,6 +7,7 @@ import { DRAG_THRESHOLDS } from '../config/dragConfig'
 import { computeMenuPosition } from '../utils/menuPosition'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
+import { useI18n } from '../i18n'
 
 // 图标路径
 const iconDelete = getIconPath('delete')
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 
 const fileStore = useFileStore()
 const dialog = useDialog()
+const { t } = useI18n()
 
 // 获取显示名称（隐藏 .url 和 .lnk 扩展名）
 function getDisplayName(fileName: string): string {
@@ -189,8 +191,8 @@ function handleOverlayClick(event: MouseEvent) {
 // 删除整个文件夹
 async function handleDeleteFolder() {
   const confirmDelete = await dialog.confirmDanger(
-    `确定要删除虚拟分组「${props.folder.name}」吗？\n（文件本身不会被删除，只是解除分组）`,
-    { title: '删除虚拟分组' }
+    t('virtualFolder.deleteConfirm', { name: props.folder.name }),
+    { title: t('virtualFolder.deleteTitle') }
   )
   if (confirmDelete) {
     fileStore.deleteVirtualFolder(props.folder.id)
@@ -285,7 +287,10 @@ function handleMenuRemoveFromFolder() {
 async function handleMenuDelete() {
   if (!contextMenuFile.value) return
   const file = contextMenuFile.value
-  const confirmDelete = await dialog.confirmDanger(`确定要将「${file.fileName}」移到回收站吗？`, { title: '删除文件' })
+  const confirmDelete = await dialog.confirmDanger(
+    t('context.deleteFileConfirm', { name: file.fileName }),
+    { title: t('context.deleteFileTitle') }
+  )
   if (!confirmDelete) {
     closeContextMenu()
     return
@@ -296,7 +301,7 @@ async function handleMenuDelete() {
     // 文件删除后也从虚拟分组移除
     emit('remove-file', file.filePath)
   } catch (error) {
-    await dialog.error(`删除失败：${error}`)
+    await dialog.error(t('context.deleteFailed', { error }))
   }
   closeContextMenu()
 }
@@ -313,7 +318,7 @@ async function handleMenuProperties() {
   try {
     await invoke('show_file_properties', { filePath: file.filePath })
   } catch (error) {
-    await dialog.error(`打开属性对话框失败：${error}`)
+    await dialog.error(t('context.propertiesFailed', { error }))
   }
   closeContextMenu()
 }
@@ -414,7 +419,7 @@ async function handleDrop(targetFile: FileItem, event: DragEvent) {
       await fileStore.loadFiles(fileStore.currentPath ?? undefined)
     } catch (error) {
       console.error('移动文件失败：', error)
-      await dialog.error(`移动文件失败：${error}`)
+      await dialog.error(t('error.moveFile', { error }))
     }
     resetDragState()
     return
@@ -497,7 +502,7 @@ function isFolderHovering(file: FileItem): boolean {
           <div class="folder-title">
             <span v-if="!isEditingName" class="folder-name" @click="startEditName">
               {{ folder.name }}
-              <span class="edit-hint">点击编辑</span>
+              <span class="edit-hint">{{ t('virtualFolder.clickEdit') }}</span>
             </span>
             <input
               v-else
@@ -509,7 +514,7 @@ function isFolderHovering(file: FileItem): boolean {
             />
           </div>
           <div class="header-actions">
-            <button class="delete-btn" @click="handleDeleteFolder" title="删除文件夹">
+            <button class="delete-btn" @click="handleDeleteFolder" :title="t('virtualFolder.delete')">
               <img :src="iconDelete" class="btn-icon" alt="" />
             </button>
             <button class="close-btn" @click="$emit('close')">
@@ -550,7 +555,7 @@ function isFolderHovering(file: FileItem): boolean {
             <button
               class="remove-btn"
               @click="handleRemoveFile(file, $event)"
-              title="从文件夹移出"
+              :title="t('virtualFolder.removeFromFolder')"
             >
               ✕
             </button>
@@ -572,28 +577,28 @@ function isFolderHovering(file: FileItem): boolean {
           <!-- 空状态 -->
           <div v-if="memberFiles.length === 0" class="empty-state">
             <img :src="iconEmpty" class="empty-icon" alt="" />
-            <p>文件夹为空</p>
-            <p class="hint">拖拽文件到此文件夹来添加</p>
+            <p>{{ t('virtualFolder.empty') }}</p>
+            <p class="hint">{{ t('virtualFolder.dragHere') }}</p>
           </div>
         </div>
 
         <!-- 拖出提示 -->
         <div v-if="draggedFilePath && isOutsideGrid" class="drag-out-hint">
-          松开将移出文件夹
+          {{ t('virtualFolder.releaseRemove') }}
         </div>
 
         <!-- 移动到文件夹提示 -->
         <div v-if="draggedFilePath && isMoveToFolderReady" class="folder-move-hint">
-          松开将移动到此文件夹
+          {{ t('virtualFolder.releaseMove') }}
         </div>
 
         <!-- 底部信息 -->
         <div class="modal-footer">
-          <span class="file-count">{{ memberFiles.length }} 个项目</span>
+          <span class="file-count">{{ t('virtualFolder.itemCount', { count: memberFiles.length }) }}</span>
           <span v-if="draggedFilePath && dragOverFolderPath && !isMoveToFolderReady" class="drag-hint">
-            继续悬停以移动到文件夹
+            {{ t('virtualFolder.keepHoverMove') }}
           </span>
-          <span v-else-if="draggedFilePath" class="drag-hint">拖到窗口外移出文件夹</span>
+          <span v-else-if="draggedFilePath" class="drag-hint">{{ t('virtualFolder.dragOutRemove') }}</span>
         </div>
 
         <Teleport to="body">
@@ -608,38 +613,38 @@ function isFolderHovering(file: FileItem): boolean {
         >
           <button class="menu-item" @click="handleMenuOpen">
             <img :src="iconOpenFolder" class="menu-icon" alt="" />
-            <span>打开</span>
+            <span>{{ t('common.open') }}</span>
           </button>
 
           <button class="menu-item" @click="handleMenuShowInExplorer">
             <img :src="iconLocation" class="menu-icon" alt="" />
-            <span>在资源管理器中显示</span>
+            <span>{{ t('context.showInExplorer') }}</span>
           </button>
 
           <div class="menu-divider"></div>
 
           <button class="menu-item" @click="handleMenuRemoveFromFolder">
             <img :src="iconExport" class="menu-icon" alt="" />
-            <span>从文件夹移出</span>
+            <span>{{ t('virtualFolder.removeFromFolder') }}</span>
           </button>
 
           <button class="menu-item" @click="handleMenuToggleFavorite">
             <span class="menu-icon-text">{{ contextMenuFile.isFavorite ? '⭐' : '☆' }}</span>
-            <span>{{ contextMenuFile.isFavorite ? '取消收藏' : '添加到收藏' }}</span>
+            <span>{{ contextMenuFile.isFavorite ? t('context.removeFavorite') : t('context.addFavorite') }}</span>
           </button>
 
           <div class="menu-divider"></div>
 
           <button class="menu-item danger" @click="handleMenuDelete">
             <img :src="iconDelete" class="menu-icon" alt="" />
-            <span>移到回收站</span>
+            <span>{{ t('context.moveToRecycleBin') }}</span>
           </button>
 
           <div class="menu-divider"></div>
 
           <button class="menu-item" @click="handleMenuProperties">
             <img :src="iconInfo" class="menu-icon" alt="" />
-            <span>属性</span>
+            <span>{{ t('common.properties') }}</span>
           </button>
         </div>
 
@@ -654,19 +659,19 @@ function isFolderHovering(file: FileItem): boolean {
         >
           <button class="menu-item" @click="handleBgRefresh">
             <img :src="iconRefresh" class="menu-icon" alt="" />
-            <span>刷新</span>
+            <span>{{ t('common.refresh') }}</span>
           </button>
 
           <div class="menu-divider"></div>
 
           <button class="menu-item" @click="startEditName(); closeBgMenu()">
             <img :src="iconPencil" class="menu-icon" alt="" />
-            <span>重命名文件夹</span>
+            <span>{{ t('virtualFolder.rename') }}</span>
           </button>
 
           <button class="menu-item danger" @click="handleBgDeleteFolder">
             <img :src="iconDelete" class="menu-icon" alt="" />
-            <span>删除虚拟分组</span>
+            <span>{{ t('virtualFolder.delete') }}</span>
           </button>
         </div>
         </Teleport>

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useFileStore, type FolderCacheInfo } from '../stores/files'
 import { useDialog } from '../composables/useDialog'
 import { getIconPath } from '../utils/iconHelper'
+import { useI18n } from '../i18n'
 
 // 图标路径
 const iconOpenFolder = getIconPath('open-folder')
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 
 const fileStore = useFileStore()
 const dialog = useDialog()
+const { t } = useI18n()
 
 const cachedFolders = computed<FolderCacheInfo[]>(() => {
   return fileStore.getCachedFoldersList()
@@ -22,8 +24,8 @@ const cachedFolders = computed<FolderCacheInfo[]>(() => {
 
 async function handleClearFolderCache(pathKey: string, displayName: string) {
   const confirmed = await dialog.confirmDanger(
-    `确定要清除「${displayName}」的缓存数据吗？\n这将删除该文件夹的虚拟分组、排序设置等数据。`,
-    { title: '清除缓存' }
+    t('folderCache.clearConfirm', { name: displayName }),
+    { title: t('folderCache.clearTitle') }
   )
   if (confirmed) {
     fileStore.clearFolderCache(pathKey)
@@ -39,18 +41,18 @@ function handleClose() {
   <div class="modal-overlay" @click.self="handleClose">
     <div class="cache-manager-panel">
       <div class="panel-header">
-        <h3 class="panel-title"><img :src="iconOpenFolder" class="title-icon" alt="" /> 文件夹缓存管理</h3>
+        <h3 class="panel-title"><img :src="iconOpenFolder" class="title-icon" alt="" /> {{ t('folderCache.title') }}</h3>
         <button class="close-btn" @click="handleClose">✕</button>
       </div>
 
       <div class="panel-content">
         <p class="panel-description">
-          管理各个监控文件夹的缓存数据，包括虚拟分组、图标排序、排序模式等。
+          {{ t('folderCache.description') }}
         </p>
 
         <div v-if="cachedFolders.length === 0" class="empty-state">
           <img :src="iconEmpty" class="empty-icon" alt="" />
-          <div class="empty-text">暂无缓存数据</div>
+          <div class="empty-text">{{ t('folderCache.empty') }}</div>
         </div>
 
         <div v-else class="folder-list">
@@ -63,25 +65,25 @@ function handleClose() {
               <div class="folder-path">{{ folder.displayName }}</div>
               <div class="folder-stats">
                 <span v-if="folder.hasVirtualFolders" class="stat-tag">
-                  <img :src="iconOpenFolder" class="stat-icon" alt="" /> {{ folder.virtualFolderCount }} 个虚拟分组
+                  <img :src="iconOpenFolder" class="stat-icon" alt="" /> {{ t('folderCache.virtualFolders', { count: folder.virtualFolderCount }) }}
                 </span>
                 <span v-if="folder.hasFavorites" class="stat-tag">
-                  ⭐ {{ folder.favoritesCount }} 个收藏
+                  ⭐ {{ t('folderCache.favorites', { count: folder.favoritesCount }) }}
                 </span>
                 <span v-if="folder.hasIconOrder" class="stat-tag">
-                  <img :src="iconList" class="stat-icon" alt="" /> 图标排序
+                  <img :src="iconList" class="stat-icon" alt="" /> {{ t('folderCache.iconOrder') }}
                 </span>
                 <span v-if="folder.hasSortMode" class="stat-tag">
-                  🔤 排序模式
+                  🔤 {{ t('folderCache.sortMode') }}
                 </span>
               </div>
             </div>
             <button
               class="clear-btn"
               @click="handleClearFolderCache(folder.pathKey, folder.displayName)"
-              title="清除此文件夹的缓存"
+              :title="t('folderCache.clearFolderTitle')"
             >
-              清除
+              {{ t('common.clear') }}
             </button>
           </div>
         </div>

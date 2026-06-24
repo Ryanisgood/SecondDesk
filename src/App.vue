@@ -22,6 +22,7 @@ import UpdateDialog from './components/UpdateDialog.vue'
 import PathSwitcher from './components/PathSwitcher.vue'
 import appLogoUrl from './assets/app-logo.png'
 import { getIconPath } from './utils/iconHelper'
+import { useI18n } from './i18n'
 
 // 图标路径
 const iconGear = getIconPath('gear')
@@ -32,6 +33,7 @@ const drawerStore = useDrawerStore()
 const batchStore = useBatchSelectStore()
 const updaterStore = useUpdaterStore()
 const watchPathsStore = useWatchPathsStore()
+const { t } = useI18n()
 
 // 是否有多个路径（控制 PathSwitcher 显示：2+ 条目时显示切换器）
 const hasMultiplePaths = computed(() => watchPathsStore.watchPaths.length > 1)
@@ -49,6 +51,15 @@ const savedAutoHideSettings = ref<{
   hideOnMouseLeave: boolean
   hideOnFocusLost: boolean
 } | null>(null)
+
+const iconSizeTitle = computed(() => {
+  const sizeLabel = iconSize.value === 'small'
+    ? t('app.iconSize.small')
+    : iconSize.value === 'medium'
+      ? t('app.iconSize.medium')
+      : t('app.iconSize.large')
+  return t('app.iconSize', { size: sizeLabel })
+})
 
 // 背景图片设置
 const backgroundImagePath = ref<string | null>(null)
@@ -1069,7 +1080,7 @@ async function saveWindowAdjustment() {
         <!-- 更新提醒 -->
         <UpdateNotification />
 
-        <button class="icon-btn no-drag" @click="handleRefresh" title="刷新">
+        <button class="icon-btn no-drag" @click="handleRefresh" :title="t('app.refresh')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
           </svg>
@@ -1080,7 +1091,7 @@ async function saveWindowAdjustment() {
         <SearchBox
           ref="searchBoxRef"
           class="no-drag"
-          placeholder="搜索文件、命令、网址..."
+          :placeholder="t('app.searchPlaceholder')"
           @focus="handleSearchFocus"
           @blur="handleSearchBlur"
           @search="bumpTypingSuspend(2500)"
@@ -1091,7 +1102,7 @@ async function saveWindowAdjustment() {
         <button
           class="icon-btn no-drag"
           @click="toggleIconSize"
-          :title="`图标尺寸: ${iconSize === 'small' ? '小' : iconSize === 'medium' ? '中' : '大'}`"
+          :title="iconSizeTitle"
         >
           <svg v-if="iconSize === 'small'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <rect x="7" y="7" width="10" height="10" rx="1"/>
@@ -1108,7 +1119,7 @@ async function saveWindowAdjustment() {
           class="icon-btn no-drag"
           :class="{ active: viewMode === 'grid' }"
           @click="viewMode = 'grid'"
-          title="网格视图"
+          :title="t('app.gridView')"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -1122,7 +1133,7 @@ async function saveWindowAdjustment() {
           class="icon-btn no-drag"
           :class="{ active: viewMode === 'list' }"
           @click="viewMode = 'list'"
-          title="列表视图"
+          :title="t('app.listView')"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="8" y1="6" x2="21" y2="6"/>
@@ -1134,8 +1145,8 @@ async function saveWindowAdjustment() {
           </svg>
         </button>
 
-        <button class="icon-btn no-drag" @click="openSettings" title="设置">
-          <img :src="iconSettings" class="toolbar-icon" alt="设置" />
+        <button class="icon-btn no-drag" @click="openSettings" :title="t('app.settings')">
+          <img :src="iconSettings" class="toolbar-icon" :alt="t('app.settings')" />
         </button>
       </div>
     </header>
@@ -1161,10 +1172,10 @@ async function saveWindowAdjustment() {
     <div v-if="isAdjustingWindow" class="window-adjust-controls">
       <div class="adjust-tip">
         <img :src="iconGear" class="tip-icon" alt="" />
-        <span>拖动窗口调整位置</span>
+        <span>{{ t('app.adjustWindowTip') }}</span>
       </div>
       <button class="save-btn no-drag" @click="saveWindowAdjustment">
-        保存位置
+        {{ t('app.savePosition') }}
       </button>
     </div>
 
