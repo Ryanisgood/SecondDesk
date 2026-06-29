@@ -1,3 +1,19 @@
+## v1.3.3 - Run as administrator
+
+### New
+
+- Added a file context-menu action to run supported Windows launch targets as administrator.
+- The new action appears for `.exe`, `.lnk`, `.msi`, `.bat`, `.cmd`, and `.ps1` files.
+- Added backend validation before triggering the Windows UAC prompt.
+
+### 中文说明
+
+- 新增文件右键菜单「以管理员身份运行」。
+- 该操作仅对 `.exe`、`.lnk`、`.msi`、`.bat`、`.cmd`、`.ps1` 文件显示。
+- 后端在触发 Windows UAC 前会再次校验文件类型。
+
+---
+
 ## v1.3.2 - Version metadata and bilingual documentation
 
 ### Fixes
