@@ -356,6 +356,14 @@ function handleContextMenuShowInExplorer(file: FileItem) {
   fileStore.showInExplorer(file.filePath)
 }
 
+async function handleContextMenuRunAsAdministrator(file: FileItem) {
+  try {
+    await invoke('run_file_as_admin', { filePath: file.filePath })
+  } catch (error) {
+    await dialog.error(t('context.runAsAdministratorFailed', { error }))
+  }
+}
+
 function handleContextMenuRename(file: FileItem) {
   renameDialogFile.value = file
   renameDialogVisible.value = true
@@ -838,6 +846,7 @@ function getDragTargetClass(item: DisplayItem): string {
         :is-custom-manual-category="isCustomManualCategory"
         @close="closeContextMenu"
         @open="handleContextMenuOpen"
+        @run-as-administrator="handleContextMenuRunAsAdministrator"
         @show-in-explorer="handleContextMenuShowInExplorer"
         @rename="handleContextMenuRename"
         @delete="handleContextMenuDelete"

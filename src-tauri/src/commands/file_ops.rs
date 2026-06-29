@@ -602,6 +602,83 @@ pub async fn show_file_properties(file_path: String) -> Result<(), String> {
     }
 }
 
+fn can_run_elevated_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| {
+            matches!(
+                extension.to_ascii_lowercase().as_str(),
+                "exe" | "lnk" | "msi" | "bat" | "cmd" | "ps1"
+            )
+        })
+        .unwrap_or(false)
+}
+
+/// 以管理员身份运行文件（触发 Windows UAC）
+#[tauri::command]
+pub async fn run_file_as_admin(file_path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::mem::size_of;
+        use std::path::Path;
+        use windows::core::PCWSTR;
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::Shell::{ShellExecuteExW, SHELLEXECUTEINFOW};
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
+
+        let path = Path::new(&file_path);
+        let canonical = validate_path(path)?;
+
+        if !canonical.is_file() {
+            return Err("仅支持以管理员身份运行文件".to_string());
+        }
+
+        if !can_run_elevated_path(&canonical) {
+            return Err("此文件类型不支持以管理员身份运行".to_string());
+        }
+
+        let path_wide: Vec<u16> = canonical
+            .to_string_lossy()
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        let directory_wide: Vec<u16> = canonical
+            .parent()
+            .map(|parent| {
+                parent
+                    .to_string_lossy()
+                    .encode_utf16()
+                    .chain(std::iter::once(0))
+                    .collect()
+            })
+            .unwrap_or_else(|| vec![0]);
+
+        let verb: Vec<u16> = "runas\0".encode_utf16().collect();
+
+        let mut info = SHELLEXECUTEINFOW {
+            cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
+            hwnd: HWND::default(),
+            lpVerb: PCWSTR(verb.as_ptr()),
+            lpFile: PCWSTR(path_wide.as_ptr()),
+            lpParameters: PCWSTR::null(),
+            lpDirectory: PCWSTR(directory_wide.as_ptr()),
+            nShow: SW_SHOW.0,
+            ..Default::default()
+        };
+
+        unsafe { ShellExecuteExW(&mut info) }
+            .map(|_| ())
+            .map_err(|e| format!("以管理员身份运行失败: {}", e))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = file_path;
+        Err("只支持 Windows 平台".to_string())
+    }
+}
+
 /// 启动应用程序（支持 PATH 环境变量中的可执行文件）
 #[tauri::command]
 pub async fn launch_application(app_name: String) -> Result<(), String> {
@@ -672,5 +749,37 @@ pub async fn execute_shell_command(shell: String, command: String) -> Result<(),
     {
         let _ = (shell, command);
         Err("只支持 Windows 平台".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_run_elevated_path;
+    use std::path::Path;
+
+    #[test]
+    fn can_run_elevated_path_accepts_windows_launch_targets_case_insensitively() {
+        for path in [
+            "C:\\Tools\\App.EXE",
+            "C:\\Tools\\Shortcut.LnK",
+            "C:\\Tools\\install.MSI",
+            "C:\\Tools\\script.BAT",
+            "C:\\Tools\\script.Cmd",
+            "C:\\Tools\\script.Ps1",
+        ] {
+            assert!(can_run_elevated_path(Path::new(path)), "{path}");
+        }
+    }
+
+    #[test]
+    fn can_run_elevated_path_rejects_non_launch_targets() {
+        for path in [
+            "C:\\Tools\\readme.txt",
+            "C:\\Tools\\document.pdf",
+            "C:\\Tools\\web.url",
+            "C:\\Tools\\folder",
+        ] {
+            assert!(!can_run_elevated_path(Path::new(path)), "{path}");
+        }
     }
 }

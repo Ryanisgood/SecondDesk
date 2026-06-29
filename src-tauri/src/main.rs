@@ -12,7 +12,8 @@ mod utils;
 use commands::file_ops::{
     copy_files_to_path, execute_shell_command, extract_file_icons, get_desktop_path, get_file_info,
     get_known_folder, launch_application, move_file, new_file, open_file, open_url, remove_file,
-    rename_file, restore_from_trash, show_file, show_file_properties, FileScannerState,
+    rename_file, restore_from_trash, run_file_as_admin, show_file, show_file_properties,
+    FileScannerState,
 };
 use commands::watch_paths::{
     add_watch_path, get_watch_paths, remove_watch_path, set_watch_path_enabled, switch_watcher,
@@ -163,6 +164,7 @@ async fn main() {
             move_file,
             copy_files_to_path,
             show_file_properties,
+            run_file_as_admin,
             set_drawer_state,
             save_drawer_config,
             load_drawer_config,

@@ -11,6 +11,7 @@ const iconLocation = getIconPath('location')
 const iconPencil = getIconPath('pencil')
 const iconDelete = getIconPath('delete')
 const iconInfo = getIconPath('info')
+const iconWindow = getIconPath('window')
 
 interface Props {
   file: FileItem | null
@@ -26,6 +27,7 @@ const { t } = useI18n()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'open', file: FileItem): void
+  (e: 'runAsAdministrator', file: FileItem): void
   (e: 'showInExplorer', file: FileItem): void
   (e: 'rename', file: FileItem): void
   (e: 'delete', file: FileItem): void
@@ -37,6 +39,13 @@ const emit = defineEmits<{
 const menuRef = ref<HTMLDivElement | null>(null)
 const left = ref(0)
 const top = ref(0)
+
+function canRunAsAdministrator(file: FileItem): boolean {
+  if (file.fType === 'dir') return false
+
+  const lowerName = file.fileName.toLowerCase()
+  return ['.exe', '.lnk', '.msi', '.bat', '.cmd', '.ps1'].some(extension => lowerName.endsWith(extension))
+}
 
 function adjustMenuPosition() {
   if (!menuRef.value) return
@@ -96,6 +105,9 @@ function handleMenuClick(action: string) {
     case 'open':
       emit('open', props.file)
       break
+    case 'runAsAdministrator':
+      emit('runAsAdministrator', props.file)
+      break
     case 'showInExplorer':
       emit('showInExplorer', props.file)
       break
@@ -132,6 +144,11 @@ function handleMenuClick(action: string) {
     <button class="menu-item" @click="handleMenuClick('open')">
       <img :src="iconOpenFolder" class="menu-icon" alt="" />
       <span>{{ t('common.open') }}</span>
+    </button>
+
+    <button v-if="canRunAsAdministrator(file)" class="menu-item" @click="handleMenuClick('runAsAdministrator')">
+      <img :src="iconWindow" class="menu-icon" alt="" />
+      <span>{{ t('context.runAsAdministrator') }}</span>
     </button>
 
     <button class="menu-item" @click="handleMenuClick('showInExplorer')">
